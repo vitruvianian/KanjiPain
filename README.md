@@ -90,6 +90,10 @@ npm run test:e2e
 
 Also visually review a 360px drawing flow and desktop keyboard/paper flow, including glyph visibility, contrast, focus, and pointer behavior. Chromium automation does not replace physical touch/pen or assistive-technology testing.
 
+## Live site
+
+Every push to `main` is checked, built and published to GitHub Pages by `.github/workflows/deploy.yml`: <https://vitruvianian.github.io/KanjiPain/>. Progress stays in each browser; use Export/Import in Settings to move it between devices.
+
 ## Static deployment
 
 Publish **`dist/`** to an HTTPS static host, including `assets/` and `licenses/`. No secrets or server environment variables are needed. Hash routing (`/#/practice`, `/#/collection`, etc.) needs no application-route rewrite rules. Serve the build over HTTP(S), not `file://`.
