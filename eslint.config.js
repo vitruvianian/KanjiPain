@@ -54,7 +54,7 @@ export default tseslint.config(
   {
     // Numeric loops index arrays whose bounds are known by construction. Under
     // noUncheckedIndexedAccess each read needs a cast; `!` is banned by the strict preset.
-    files: ['src/recognition/geometry.ts', 'src/recognition/check.ts'],
+    files: ['src/recognition/geometry.ts', 'src/recognition/check.ts', 'src/components/brush.ts'],
     rules: {
       '@typescript-eslint/non-nullable-type-assertion-style': 'off',
     },

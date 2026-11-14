@@ -2,15 +2,9 @@ import { memo, useEffect, useId, useMemo, useRef, useState, type PointerEvent } 
 
 import type { Stroke } from '../domain/types';
 import type { StrokeMark } from '../recognition/check';
-import {
-  BRUSH,
-  INITIAL_PRESSURE,
-  VIEW_SIZE,
-  makePoint,
-  nextPressure,
-  strokeOutlinePath,
-} from './brush';
+import { BRUSH, VIEW_SIZE, strokeOutlinePath } from './brush';
 import { Button } from './Button';
+import { StrokeBuilder, type InputSample } from './stroke-input';
 
 interface DrawingPadProps {
   strokes: readonly Stroke[];
@@ -26,30 +20,29 @@ interface DrawingPadProps {
 interface ActiveStroke {
   pointerId: number;
   pointerType: string;
-  stroke: Stroke;
-  startedAt: number;
-  lastAt: number;
-  pressure: number;
+  builder: StrokeBuilder;
+  /** Points the browser predicts will follow; drawn for one frame only. */
+  predicted: InputSample[];
 }
 
 const MAX_STROKES = 100;
 const MAX_POINTS = 20_000;
-/** Samples closer than this to the previous one are dropped (0.4% of the pad). */
-const MIN_DISTANCE = 0.004;
 /** A touch this soon after pen activity is treated as a resting palm. */
 const PALM_REJECTION_MS = 1000;
 const LIMIT_MESSAGE = 'Drawing limit reached. Undo a stroke or clear the drawing to continue.';
 
-function penPressure(event: { pointerType: string; pressure: number }): number | null {
-  return event.pointerType === 'pen' && event.pressure > 0 ? event.pressure : null;
-}
-
 /** Every sample the browser collected since the last event, not only the latest one. */
 function samplesOf(event: PointerEvent<SVGSVGElement>): readonly globalThis.PointerEvent[] {
   const native = event.nativeEvent;
+  // iPad Safari does not provide coalesced events; it delivers one sample per frame.
   const coalesced =
     typeof native.getCoalescedEvents === 'function' ? native.getCoalescedEvents() : [];
   return coalesced.length > 0 ? coalesced : [native];
+}
+
+function predictedOf(event: PointerEvent<SVGSVGElement>): readonly globalThis.PointerEvent[] {
+  const native = event.nativeEvent;
+  return typeof native.getPredictedEvents === 'function' ? native.getPredictedEvents() : [];
 }
 
 function isTextEntry(target: EventTarget | null): boolean {
@@ -142,7 +135,7 @@ function DrawingSurface({
     const current = active.current;
     livePath.current?.setAttribute(
       'd',
-      current === null ? '' : strokeOutlinePath(current.stroke, false),
+      current === null ? '' : strokeOutlinePath(current.builder.preview(current.predicted), false),
     );
   }
 
@@ -150,14 +143,16 @@ function DrawingSurface({
     frame.current ??= requestAnimationFrame(paintLive);
   }
 
-  function relativePosition(
+  function inputSample(
     surface: SVGSVGElement,
-    sample: { clientX: number; clientY: number },
-  ): { x: number; y: number } {
+    sample: { clientX: number; clientY: number; timeStamp: number; pressure: number },
+  ): InputSample {
     const bounds = surface.getBoundingClientRect();
     return {
       x: (sample.clientX - bounds.left) / bounds.width,
       y: (sample.clientY - bounds.top) / bounds.height,
+      t: sample.timeStamp,
+      pressure: sample.pressure,
     };
   }
 
@@ -165,26 +160,15 @@ function DrawingSurface({
     const current = active.current;
     if (readOnly || current?.pointerId !== event.pointerId) return;
     for (const sample of samplesOf(event)) {
-      if (current.stroke.length + pointCount >= MAX_POINTS) {
+      if (current.builder.length + pointCount >= MAX_POINTS) {
         setLimitReached(true);
         break;
       }
-      const last = current.stroke[current.stroke.length - 1];
-      const position = relativePosition(event.currentTarget, sample);
-      const candidate = makePoint(position.x, position.y, 0, 0);
-      const distance =
-        last === undefined ? 0 : Math.hypot(candidate.x - last.x, candidate.y - last.y);
-      if (last !== undefined && distance < MIN_DISTANCE) continue;
-      current.pressure = nextPressure(current.pressure, {
-        penPressure: penPressure(sample),
-        distance,
-        elapsedMs: sample.timeStamp - current.lastAt,
-      });
-      current.lastAt = sample.timeStamp;
-      current.stroke.push(
-        makePoint(position.x, position.y, current.pressure, sample.timeStamp - current.startedAt),
-      );
+      current.builder.add(inputSample(event.currentTarget, sample));
     }
+    current.predicted = predictedOf(event).map((sample) =>
+      inputSample(event.currentTarget, sample),
+    );
     schedulePaint();
   }
 
@@ -221,15 +205,11 @@ function DrawingSurface({
     }
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
-    const position = relativePosition(event.currentTarget, event);
-    const pressure = penPressure(event) ?? INITIAL_PRESSURE;
     active.current = {
       pointerId: event.pointerId,
       pointerType: event.pointerType,
-      stroke: [makePoint(position.x, position.y, pressure, 0)],
-      startedAt: event.timeStamp,
-      lastAt: event.timeStamp,
-      pressure,
+      builder: new StrokeBuilder(event.pointerType, inputSample(event.currentTarget, event)),
+      predicted: [],
     };
     setDrawing(true);
     schedulePaint();
@@ -260,7 +240,7 @@ function DrawingSurface({
           if (readOnly || current?.pointerId !== event.pointerId) return;
           appendSamples(event);
           discard(event);
-          onStrokesChange([...strokes, current.stroke]);
+          onStrokesChange([...strokes, current.builder.stroke]);
         }}
         onPointerCancel={discard}
         onLostPointerCapture={discard}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { makePoint, nextPressure, strokeOutlinePath } from '../../src/components/brush';
+import { makePoint, strokeOutlinePath } from '../../src/components/brush';
 import { strokeSchema } from '../../src/domain/schemas';
 import type { Stroke } from '../../src/domain/types';
 
@@ -21,22 +21,6 @@ describe('makePoint', () => {
     expect(strokeSchema.parse(stroke)).toEqual(stroke);
     expect(() => strokeSchema.parse([{ x: 0.5, y: 0.5, p: 1.5 }])).toThrow();
     expect(() => strokeSchema.parse([{ x: 0.5, y: 0.5, t: 1.5 }])).toThrow();
-  });
-});
-
-describe('nextPressure', () => {
-  it('is heavier for slow movement than for fast movement', () => {
-    const slow = nextPressure(0.5, { penPressure: null, distance: 0.004, elapsedMs: 16 });
-    const fast = nextPressure(0.5, { penPressure: null, distance: 0.08, elapsedMs: 16 });
-    expect(slow).toBeGreaterThan(0.5);
-    expect(fast).toBeLessThan(0.5);
-  });
-
-  it('eases toward real pen pressure and holds steady without elapsed time', () => {
-    const eased = nextPressure(0.2, { penPressure: 1, distance: 0.01, elapsedMs: 8 });
-    expect(eased).toBeGreaterThan(0.2);
-    expect(eased).toBeLessThan(1);
-    expect(nextPressure(0.4, { penPressure: null, distance: 0.01, elapsedMs: 0 })).toBe(0.4);
   });
 });
 

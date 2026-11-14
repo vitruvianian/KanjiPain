@@ -222,7 +222,10 @@ input[type='checkbox'] {
   background: var(--color-paper);
   border-radius: var(--radius);
   touch-action: none;
+  -webkit-user-select: none;
   user-select: none;
+  /* Stops the iPad selection loupe and callout on a long Pencil press. */
+  -webkit-touch-callout: none;
 }
 .drawing-surface--readonly {
   touch-action: auto;

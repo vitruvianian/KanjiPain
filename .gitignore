@@ -25,3 +25,6 @@ data/raw/
 
 # TypeScript incremental state
 *.tsbuildinfo
+
+# Raw device recordings (large); the compact trace fixture is tests/fixtures/pencil-traces.json
+tests/fixtures/pencil/
