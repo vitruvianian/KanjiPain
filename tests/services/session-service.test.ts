@@ -143,6 +143,60 @@ describe('introductions', () => {
   });
 });
 
+describe('extra sessions', () => {
+  it('introduces new characters past the daily limit, as often as asked', async () => {
+    const current = await harness('extra-new', 12);
+    await current.database.settings.update('user', { dailyNewLimit: 1 });
+
+    for (let round = 0; round < 2; round += 1) {
+      const started = await current.sessions.startOrResumeSession('extra-new');
+      expect(started.mode).toBe('extra-new');
+      expect(started.primaryItems).toHaveLength(5);
+      const opened = await current.sessions.openNextItem(started.id, started.revision);
+      expect(opened.session.phase.kind).toBe('introduction');
+      await current.sessions.finishSession(opened.session.id, opened.session.revision);
+      // Each extra session introduces past the limit of 1.
+      await expect(current.database.cards.count()).resolves.toBe(round + 1);
+    }
+  });
+
+  it('keeps the daily limit for regular sessions after extra introductions', async () => {
+    const current = await harness('extra-then-regular', 12);
+    await current.database.settings.update('user', { dailyNewLimit: 1 });
+    const extra = await current.sessions.startOrResumeSession('extra-new');
+    const opened = await current.sessions.openNextItem(extra.id, extra.revision);
+    await current.sessions.finishSession(opened.session.id, opened.session.revision);
+
+    const regular = await current.sessions.startOrResumeSession();
+    expect(regular.mode).toBeUndefined();
+    // The introduced but ungraded character is due; the limit allows no further new ones.
+    expect(regular.primaryItems.map((item) => item.origin)).toEqual(['due']);
+  });
+
+  it('reviews a learned card before it is due', async () => {
+    const current = await harness('review-ahead');
+    const entry = catalogEntry(0);
+    await current.database.settings.update('user', { dailyNewLimit: 0 });
+    await current.database.cards.put(
+      dueCard(entry, { dueAt: NOW + 3 * 24 * 60 * 60 * 1000, scheduledReviewCount: 2 }),
+    );
+
+    expect((await current.sessions.startOrResumeSession()).primaryItems).toHaveLength(0);
+    const ahead = await current.sessions.startOrResumeSession('review-ahead');
+    expect(ahead).toMatchObject({ mode: 'review-ahead', status: 'active' });
+    const opened = await current.sessions.openNextItem(ahead.id, ahead.revision);
+    expect(opened.session.phase.kind).toBe('prompt');
+  });
+
+  it('resumes an active session instead of starting an extra one', async () => {
+    const current = await harness('extra-resume', 6);
+    const regular = await current.sessions.startOrResumeSession();
+    const again = await current.sessions.startOrResumeSession('extra-new');
+    expect(again.id).toBe(regular.id);
+    expect(again.mode).toBeUndefined();
+  });
+});
+
 describe('draft durability and concurrency', () => {
   it('persists hints and surrender before feedback is returned', async () => {
     const current = await harness('reload-feedback');

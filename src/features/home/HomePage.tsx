@@ -5,6 +5,7 @@ import { useNow } from '../../app/useNow';
 import { localDayKey } from '../../domain/date';
 import { planSession } from '../../domain/queue';
 import { formatDate } from '../format';
+import { ExtraPractice } from '../practice/ExtraPractice';
 import { Onboarding } from './Onboarding';
 
 function estimateMinutes(exerciseCount: number): number {
@@ -123,8 +124,9 @@ export function HomePage() {
                   </p>
                   <p className="muted">
                     Adjust the daily new-character limit in <Link to="/settings">Settings</Link>, or
-                    browse the <Link to="/collection">collection</Link> while you wait.
+                    study more with an extra session below.
                   </p>
+                  <ExtraPractice headingLevel={3} />
                 </>
               ) : (
                 <>
@@ -140,6 +142,7 @@ export function HomePage() {
                   <Link className="button button--primary" to="/practice">
                     Start practice
                   </Link>
+                  <ExtraPractice headingLevel={3} />
                 </>
               )}
             </>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { chooseNextItem, planSession } from '../../src/domain/queue';
+import { EXTRA_NEW_COUNT, chooseNextItem, planSession } from '../../src/domain/queue';
 import type { SettingsRecord } from '../../src/domain/types';
 import { BASE_TIME, card, entry, session } from './domain-fixtures';
 
@@ -10,6 +10,52 @@ const settings: SettingsRecord = {
   inputMode: 'drawing',
   onboardingCompleted: true,
 };
+
+describe('planSession extra modes', () => {
+  it('introduces a fixed batch beyond the daily limit and leaves due reviews alone', () => {
+    const catalog = Array.from({ length: 12 }, (_, index) => entry(index));
+    const cards = catalog.slice(0, 3).map((item) => card(item));
+
+    const plan = planSession({
+      cards,
+      catalog,
+      settings,
+      introducedToday: 5,
+      now: BASE_TIME,
+      mode: 'extra-new',
+    });
+
+    expect(plan.dueCount).toBe(0);
+    expect(plan.newCount).toBe(EXTRA_NEW_COUNT);
+    expect(plan.primaryItems.map((item) => item.kanjiId)).toEqual(
+      catalog.slice(3, 3 + EXTRA_NEW_COUNT).map((item) => item.id),
+    );
+  });
+
+  it('reviews learned cards soonest-due first, including ones not yet due', () => {
+    const catalog = Array.from({ length: 30 }, (_, index) => entry(index));
+    const cards = catalog
+      .slice(0, 25)
+      .map((item, index) =>
+        card(item, { dueAt: BASE_TIME + (25 - index) * 60_000, suspended: index === 0 }),
+      );
+
+    const plan = planSession({
+      cards,
+      catalog,
+      settings,
+      introducedToday: 0,
+      now: BASE_TIME,
+      mode: 'review-ahead',
+    });
+
+    expect(plan.newCount).toBe(0);
+    expect(plan.primaryItems).toHaveLength(20);
+    expect(plan.primaryItems[0]?.kanjiId).toBe(catalog[24]?.id);
+    expect(plan.primaryItems.every((item) => item.origin === 'due')).toBe(true);
+    expect(plan.primaryItems.map((item) => item.kanjiId)).not.toContain(catalog[0]?.id);
+  });
+});
 
 describe('planSession', () => {
   it('selects at most twenty due cards and no new cards when twenty are due', () => {

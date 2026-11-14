@@ -37,7 +37,12 @@ Open the URL printed by Vite. Dependencies are pinned in `package-lock.json`; or
 
 Only primary attempts update FSRS, including a new character's first graded check. Rematches record local practice but never alter the schedule or count as independent reviews. The adapter pins `ts-fsrs@6.0.0`, FSRS-7, desired retention 0.9, short-term scheduling off, fuzz off, and maximum interval 36,500 days.
 
-Sessions prioritize due cards and have at most 20 primary exercises and 60 graded attempts including rematches. The daily new limit defaults to 5 and is configurable from 0–10; 0 stops introductions, not due reviews. Enrollment counts when an introduction is displayed and persisted—not when graded. Finishing after the next introduction can therefore count an unreviewed new character, which remains due. You can finish early at any phase.
+Sessions prioritize due cards and have at most 20 primary exercises and 60 graded attempts including rematches.
+
+To study beyond the plan, start an **extra session** from the Dojo or from any session summary, as often as you like:
+
+- **Learn more new characters** introduces 5 more, past the daily limit. They are counted in today's introductions, so regular sessions add no further new characters today.
+- **Review ahead** practises up to 20 learned characters, the soonest due first, even if they are not due yet. These are real FSRS reviews: an early review strengthens memory less, so the next interval grows less than an on-time review would. The daily new limit defaults to 5 and is configurable from 0–10; 0 stops introductions, not due reviews. Enrollment counts when an introduction is displayed and persisted—not when graded. Finishing after the next introduction can therefore count an unreviewed new character, which remains due. You can finish early at any phase.
 
 The Collection searches the whole catalog before pagination, with progress filters and character details/history. **This prompt is ambiguous** pauses the card without an FSRS failure; resume it from character details without moving its due date.
 

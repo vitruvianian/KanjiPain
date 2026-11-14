@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useAppServices, useCard } from '../../app/useAppServices';
 import { Button } from '../../components/Button';
@@ -8,14 +8,25 @@ import { IntroductionPanel } from './IntroductionPanel';
 import { PromptPanel } from './PromptPanel';
 import { RepairPanel } from './RepairPanel';
 import { ShortRematchPanel } from './ShortRematchPanel';
+import type { SessionMode } from '../../domain/session-types';
 import { usePracticeSession } from './usePracticeSession';
 
 function exerciseCounts(primaryRemaining: number, rematchRemaining: number): string {
   return `${String(primaryRemaining)} primary · ${String(rematchRemaining)} rematch`;
 }
 
+function modeFrom(value: string | null): SessionMode {
+  return value === 'extra-new' || value === 'review-ahead' ? value : 'regular';
+}
+
+const MODE_LABELS: Readonly<Record<Exclude<SessionMode, 'regular'>, string>> = {
+  'extra-new': 'Extra session: new characters',
+  'review-ahead': 'Extra session: reviewing ahead',
+};
+
 export function PracticePage() {
-  const practice = usePracticeSession();
+  const [searchParams] = useSearchParams();
+  const practice = usePracticeSession(modeFrom(searchParams.get('mode')));
   const { catalog } = useAppServices();
   const navigate = useNavigate();
   const { session, loading, busy, error, notice, shortRematch, refresh, openNext } = practice;
@@ -88,6 +99,9 @@ export function PracticePage() {
       <h1 className="visually-hidden">Practice</h1>
       <div className="practice-toolbar">
         <p className="practice-progress">
+          {session.mode === undefined ? null : (
+            <span className="practice-mode">{MODE_LABELS[session.mode]} · </span>
+          )}
           <span className="muted">Remaining:</span> {exerciseCounts(primaryPending, rematchPending)}
         </p>
         <Button

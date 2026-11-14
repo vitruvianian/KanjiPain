@@ -6,6 +6,7 @@ import {
   useSessionIntroducedCards,
   useSessions,
 } from '../../app/useAppServices';
+import { ExtraPractice } from './ExtraPractice';
 import { calculateSummary } from '../../domain/metrics';
 import type { SessionSummary } from '../../domain/session-types';
 
@@ -81,6 +82,7 @@ function SummaryContent({ sessionId }: { sessionId: string }) {
     <section className="panel" aria-labelledby="summary-title">
       <p className="eyebrow">
         {session.status === 'completed' ? 'Session complete' : 'Partial session'}
+        {session.mode === undefined ? '' : ' · extra session'}
       </p>
       <h1 id="summary-title">Session summary</h1>
       {session.status === 'ended' ? (
@@ -124,6 +126,8 @@ function SummaryContent({ sessionId }: { sessionId: string }) {
           Browse the collection
         </Link>
       </div>
+
+      {sessions.some((candidate) => candidate.status === 'active') ? null : <ExtraPractice />}
     </section>
   );
 }

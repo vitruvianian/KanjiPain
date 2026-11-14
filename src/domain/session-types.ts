@@ -80,6 +80,13 @@ export interface SummaryPhase {
 export type SessionPhase =
   SelectingPhase | IntroductionPhase | PromptPhase | FeedbackPhase | RepairPhase | SummaryPhase;
 
+/**
+ * `regular` follows the schedule and the daily new-character limit. The extra modes are
+ * started on request, as often as the learner likes: `extra-new` introduces more characters
+ * beyond the daily limit, `review-ahead` practises learned characters before they are due.
+ */
+export type SessionMode = 'regular' | 'extra-new' | 'review-ahead';
+
 export interface SessionRecord {
   id: string;
   status: SessionStatus;
@@ -93,6 +100,8 @@ export interface SessionRecord {
   rematchItems: RematchSessionItem[];
   phase: SessionPhase;
   completedEventIds: string[];
+  /** Absent on regular sessions, including every session saved before extra modes existed. */
+  mode?: Exclude<SessionMode, 'regular'> | undefined;
 }
 
 export interface PlanSessionInput {
@@ -101,6 +110,7 @@ export interface PlanSessionInput {
   readonly settings: SettingsRecord;
   readonly introducedToday: number;
   readonly now: UnixMs;
+  readonly mode?: SessionMode;
 }
 
 export interface SessionPlan {

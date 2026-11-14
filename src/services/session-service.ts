@@ -4,7 +4,12 @@ import type { IdSource } from '../domain/ids';
 import { buildPrompt } from '../domain/prompts';
 import { chooseNextItem, planSession } from '../domain/queue';
 import { InvalidSessionTransitionError, reduceSession } from '../domain/session-reducer';
-import type { NextItemDecision, PrimarySessionItem, SessionRecord } from '../domain/session-types';
+import type {
+  NextItemDecision,
+  PrimarySessionItem,
+  SessionMode,
+  SessionRecord,
+} from '../domain/session-types';
 import { sessionRecordSchema, unrevealedAttemptDraftSchema } from '../domain/schemas';
 import type { InputMode, Stroke, UnrevealedAttemptDraft } from '../domain/types';
 import type { SchedulerAdapter } from '../scheduler/types';
@@ -149,7 +154,11 @@ export class SessionService {
     return this.#storage.getSession(sessionId);
   }
 
-  async startOrResumeSession(): Promise<SessionRecord> {
+  /**
+   * Resumes the active session, or starts one in `mode`. An active session always wins, so
+   * asking for an extra session while one is open resumes that one instead.
+   */
+  async startOrResumeSession(mode: SessionMode = 'regular'): Promise<SessionRecord> {
     const now = this.#clock.now();
     try {
       return await this.#database.transaction(
@@ -195,6 +204,7 @@ export class SessionService {
             settings,
             introducedToday,
             now,
+            mode,
           });
           let created: SessionRecord = {
             id: this.#ids.next(),
@@ -209,6 +219,7 @@ export class SessionService {
             rematchItems: [],
             phase: { kind: 'selecting' },
             completedEventIds: [],
+            ...(mode === 'regular' ? {} : { mode }),
           };
           if (created.primaryItems.length === 0) {
             created = reduceSession(created, { type: 'complete', endedAt: now });
@@ -275,7 +286,8 @@ export class SessionService {
                 .where('introducedLocalDay')
                 .equals(day)
                 .count();
-              if (introductionCount >= settings.dailyNewLimit) {
+              // Extra sessions exist to go past the daily limit.
+              if (session.mode !== 'extra-new' && introductionCount >= settings.dailyNewLimit) {
                 session = reduceSession(session, { type: 'skip-item', itemId });
                 continue;
               }

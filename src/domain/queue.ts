@@ -9,6 +9,8 @@ import type { CardRecord, KanjiEntry } from './types';
 
 export const PRIMARY_SESSION_LIMIT = 20;
 export const REMATCH_GAP_SIZE = 3;
+/** New characters in one extra "learn more" session. */
+export const EXTRA_NEW_COUNT = 5;
 
 function cardIdFor(entry: KanjiEntry): string {
   return `${entry.id}:production`;
@@ -28,12 +30,17 @@ export function planSession({
   settings,
   introducedToday,
   now,
+  mode = 'regular',
 }: PlanSessionInput): SessionPlan {
   const catalogById = new Map(catalog.map((entry) => [entry.id, entry]));
   const cardByKanjiId = new Map(cards.map((card) => [card.kanjiId, card]));
 
-  const dueCards = cards
-    .filter((card) => !card.suspended && card.dueAt <= now)
+  // Extra "learn more" sessions only introduce characters; due reviews stay due for the next
+  // regular session. "Review ahead" takes learned characters soonest-due first, due or not.
+  const reviewable = (card: CardRecord) =>
+    !card.suspended && (mode === 'review-ahead' || card.dueAt <= now);
+  const dueCards = (mode === 'extra-new' ? [] : cards)
+    .filter(reviewable)
     .map((card): readonly [CardRecord, KanjiEntry] => {
       const entry = catalogById.get(card.kanjiId);
       if (entry === undefined) {
@@ -51,7 +58,12 @@ export function planSession({
 
   const remainingSlots = PRIMARY_SESSION_LIMIT - dueCards.length;
   const remainingDailyIntroductions = Math.max(0, settings.dailyNewLimit - introducedToday);
-  const newCount = Math.min(remainingSlots, remainingDailyIntroductions);
+  const newCount =
+    mode === 'regular'
+      ? Math.min(remainingSlots, remainingDailyIntroductions)
+      : mode === 'extra-new'
+        ? EXTRA_NEW_COUNT
+        : 0;
   const newEntries = catalog
     .filter((entry) => !cardByKanjiId.has(entry.id))
     .sort(

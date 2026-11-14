@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAppServices } from '../../app/useAppServices';
-import type { SessionRecord } from '../../domain/session-types';
+import type { SessionMode, SessionRecord } from '../../domain/session-types';
 import type { CheckerVerdict, Grade, HintKey } from '../../domain/types';
 import type { DraftChange } from '../../services/session-service';
 import { StaleRevisionError, StorageError } from '../../storage/errors';
@@ -42,7 +42,8 @@ function describeError(error: unknown): string {
   return 'KanjiPain could not save that step. Your attempt is still here, so you can try again.';
 }
 
-export function usePracticeSession(): PracticeSessionController {
+/** `mode` applies only when no session is active; an active session is always resumed. */
+export function usePracticeSession(mode: SessionMode = 'regular'): PracticeSessionController {
   const { sessions, reviews } = useAppServices();
   const [session, setSession] = useState<SessionRecord | null>(null);
   const [loading, setLoading] = useState(true);
@@ -98,7 +99,7 @@ export function usePracticeSession(): PracticeSessionController {
     const alive = { value: true };
     void (async () => {
       try {
-        const started = await sessions.startOrResumeSession();
+        const started = await sessions.startOrResumeSession(mode);
         if (alive.value) {
           applySession(started);
           setLoading(false);
@@ -113,7 +114,7 @@ export function usePracticeSession(): PracticeSessionController {
     return () => {
       alive.value = false;
     };
-  }, [applySession, sessions]);
+  }, [applySession, mode, sessions]);
 
   const openNext = useCallback(
     (acceptShortRematch = false): Promise<void> =>
