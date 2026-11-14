@@ -1,0 +1,116 @@
+{
+  "format": "kanjipain-backup",
+  "version": 1,
+  "exportedAt": 1577880000000,
+  "datasetVersion": "4d5746dd603285b9ccd23e54b719cadf8b4ba41208d609c0cb4914cc4e35ed67",
+  "scheduler": {
+    "adapterVersion": 1,
+    "packageVersion": "6.0.0",
+    "model": "FSRS-7"
+  },
+  "cards": [
+    {
+      "id": "k-65e5:production",
+      "kanjiId": "k-65e5",
+      "skill": "production",
+      "introducedAt": 1577880000000,
+      "introducedLocalDay": "2020-01-01",
+      "introducedInSessionId": "fixture-1",
+      "dueAt": 1578292795164,
+      "schedulerState": {
+        "adapterVersion": 1,
+        "packageVersion": "6.0.0",
+        "model": "FSRS-7",
+        "card": {
+          "stability": 3.9221,
+          "stabilityFast": 3.13768,
+          "difficulty": 3.53072398,
+          "state": 2,
+          "scheduleStatus": "review",
+          "dueAt": 1578292795164,
+          "lastReviewAt": 1577880000000,
+          "cardId": "k-65e5:production",
+          "reps": 1,
+          "lapses": 0,
+          "scheduledDays": 4.777721809269842,
+          "learningStep": 0
+        }
+      },
+      "scheduledReviewCount": 1,
+      "suspended": false,
+      "version": 1
+    }
+  ],
+  "events": [
+    {
+      "id": "fixture-2",
+      "sessionId": "fixture-1",
+      "cardId": "k-65e5:production",
+      "itemId": "primary:k-65e5:production",
+      "kind": "scheduled",
+      "isFirstLearningCheck": true,
+      "grade": "got",
+      "assisted": false,
+      "hintKeysUsed": [],
+      "inputMode": "drawing",
+      "occurredAt": 1577880000000,
+      "durationMs": 0,
+      "beforeVersion": 0,
+      "afterVersion": 1,
+      "schedulerLog": {
+        "adapterVersion": 1,
+        "packageVersion": "6.0.0",
+        "model": "FSRS-7",
+        "revlog": {
+          "stability": 0,
+          "stabilityFast": 0,
+          "difficulty": 0,
+          "state": 0,
+          "scheduleStatus": "new",
+          "rating": 3,
+          "dueAt": 1577880000000,
+          "lastReviewAt": null,
+          "reviewTime": 1577880000000,
+          "cardId": "k-65e5:production",
+          "scheduledDays": 0,
+          "learningStep": 0
+        }
+      },
+      "datasetVersion": "4d5746dd603285b9ccd23e54b719cadf8b4ba41208d609c0cb4914cc4e35ed67"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "fixture-1",
+      "status": "ended",
+      "revision": 6,
+      "startedAt": 1577880000000,
+      "endedAt": 1577880000000,
+      "startedLocalDay": "2020-01-01",
+      "datasetVersion": "4d5746dd603285b9ccd23e54b719cadf8b4ba41208d609c0cb4914cc4e35ed67",
+      "primaryLimit": 20,
+      "primaryItems": [
+        {
+          "id": "primary:k-65e5:production",
+          "cardId": "k-65e5:production",
+          "kanjiId": "k-65e5",
+          "origin": "new",
+          "status": "done",
+          "expectedCardVersion": 0
+        }
+      ],
+      "rematchItems": [],
+      "phase": {
+        "kind": "summary"
+      },
+      "completedEventIds": ["fixture-2"]
+    }
+  ],
+  "settings": {
+    "id": "user",
+    "dailyNewLimit": 0,
+    "inputMode": "drawing",
+    "onboardingCompleted": true
+  },
+  "contentIssues": []
+}

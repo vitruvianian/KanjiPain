@@ -1,0 +1,432 @@
+{
+  "format": "kanjipain-backup",
+  "version": 1,
+  "exportedAt": 1577880000000,
+  "datasetVersion": "4d5746dd603285b9ccd23e54b719cadf8b4ba41208d609c0cb4914cc4e35ed67",
+  "scheduler": {
+    "adapterVersion": 1,
+    "packageVersion": "6.0.0",
+    "model": "FSRS-7"
+  },
+  "cards": [
+    {
+      "id": "k-4e00:production",
+      "kanjiId": "k-4e00",
+      "skill": "production",
+      "introducedAt": 1577880000000,
+      "introducedLocalDay": "2020-01-01",
+      "introducedInSessionId": "fixture-1",
+      "dueAt": 1578292795164,
+      "schedulerState": {
+        "adapterVersion": 1,
+        "packageVersion": "6.0.0",
+        "model": "FSRS-7",
+        "card": {
+          "stability": 3.9221,
+          "stabilityFast": 3.13768,
+          "difficulty": 3.53072398,
+          "state": 2,
+          "scheduleStatus": "review",
+          "dueAt": 1578292795164,
+          "lastReviewAt": 1577880000000,
+          "cardId": "k-4e00:production",
+          "reps": 1,
+          "lapses": 0,
+          "scheduledDays": 4.777721809269842,
+          "learningStep": 0
+        }
+      },
+      "scheduledReviewCount": 1,
+      "suspended": false,
+      "version": 1
+    },
+    {
+      "id": "k-4eba:production",
+      "kanjiId": "k-4eba",
+      "skill": "production",
+      "introducedAt": 1577880000000,
+      "introducedLocalDay": "2020-01-01",
+      "introducedInSessionId": "fixture-1",
+      "dueAt": 1578292795164,
+      "schedulerState": {
+        "adapterVersion": 1,
+        "packageVersion": "6.0.0",
+        "model": "FSRS-7",
+        "card": {
+          "stability": 3.9221,
+          "stabilityFast": 3.13768,
+          "difficulty": 3.53072398,
+          "state": 2,
+          "scheduleStatus": "review",
+          "dueAt": 1578292795164,
+          "lastReviewAt": 1577880000000,
+          "cardId": "k-4eba:production",
+          "reps": 1,
+          "lapses": 0,
+          "scheduledDays": 4.777721809269842,
+          "learningStep": 0
+        }
+      },
+      "scheduledReviewCount": 1,
+      "suspended": false,
+      "version": 1
+    },
+    {
+      "id": "k-5927:production",
+      "kanjiId": "k-5927",
+      "skill": "production",
+      "introducedAt": 1577880000000,
+      "introducedLocalDay": "2020-01-01",
+      "introducedInSessionId": "fixture-6",
+      "dueAt": 1577880000000,
+      "schedulerState": {
+        "adapterVersion": 1,
+        "packageVersion": "6.0.0",
+        "model": "FSRS-7",
+        "card": {
+          "stability": 0,
+          "stabilityFast": 0,
+          "difficulty": 0,
+          "state": 0,
+          "scheduleStatus": "new",
+          "dueAt": 1577880000000,
+          "lastReviewAt": null,
+          "cardId": "k-5927:production",
+          "reps": 0,
+          "lapses": 0,
+          "scheduledDays": 0,
+          "learningStep": 0
+        }
+      },
+      "scheduledReviewCount": 0,
+      "suspended": true,
+      "version": 1
+    },
+    {
+      "id": "k-5e74:production",
+      "kanjiId": "k-5e74",
+      "skill": "production",
+      "introducedAt": 1577880000000,
+      "introducedLocalDay": "2020-01-01",
+      "introducedInSessionId": "fixture-1",
+      "dueAt": 1578292795164,
+      "schedulerState": {
+        "adapterVersion": 1,
+        "packageVersion": "6.0.0",
+        "model": "FSRS-7",
+        "card": {
+          "stability": 3.9221,
+          "stabilityFast": 3.13768,
+          "difficulty": 3.53072398,
+          "state": 2,
+          "scheduleStatus": "review",
+          "dueAt": 1578292795164,
+          "lastReviewAt": 1577880000000,
+          "cardId": "k-5e74:production",
+          "reps": 1,
+          "lapses": 0,
+          "scheduledDays": 4.777721809269842,
+          "learningStep": 0
+        }
+      },
+      "scheduledReviewCount": 1,
+      "suspended": false,
+      "version": 1
+    },
+    {
+      "id": "k-65e5:production",
+      "kanjiId": "k-65e5",
+      "skill": "production",
+      "introducedAt": 1577880000000,
+      "introducedLocalDay": "2020-01-01",
+      "introducedInSessionId": "fixture-1",
+      "dueAt": 1578292795164,
+      "schedulerState": {
+        "adapterVersion": 1,
+        "packageVersion": "6.0.0",
+        "model": "FSRS-7",
+        "card": {
+          "stability": 3.9221,
+          "stabilityFast": 3.13768,
+          "difficulty": 3.53072398,
+          "state": 2,
+          "scheduleStatus": "review",
+          "dueAt": 1578292795164,
+          "lastReviewAt": 1577880000000,
+          "cardId": "k-65e5:production",
+          "reps": 1,
+          "lapses": 0,
+          "scheduledDays": 4.777721809269842,
+          "learningStep": 0
+        }
+      },
+      "scheduledReviewCount": 1,
+      "suspended": false,
+      "version": 1
+    }
+  ],
+  "events": [
+    {
+      "id": "fixture-2",
+      "sessionId": "fixture-1",
+      "cardId": "k-65e5:production",
+      "itemId": "primary:k-65e5:production",
+      "kind": "scheduled",
+      "isFirstLearningCheck": true,
+      "grade": "got",
+      "assisted": false,
+      "hintKeysUsed": [],
+      "inputMode": "drawing",
+      "occurredAt": 1577880000000,
+      "durationMs": 0,
+      "beforeVersion": 0,
+      "afterVersion": 1,
+      "schedulerLog": {
+        "adapterVersion": 1,
+        "packageVersion": "6.0.0",
+        "model": "FSRS-7",
+        "revlog": {
+          "stability": 0,
+          "stabilityFast": 0,
+          "difficulty": 0,
+          "state": 0,
+          "scheduleStatus": "new",
+          "rating": 3,
+          "dueAt": 1577880000000,
+          "lastReviewAt": null,
+          "reviewTime": 1577880000000,
+          "cardId": "k-65e5:production",
+          "scheduledDays": 0,
+          "learningStep": 0
+        }
+      },
+      "datasetVersion": "4d5746dd603285b9ccd23e54b719cadf8b4ba41208d609c0cb4914cc4e35ed67"
+    },
+    {
+      "id": "fixture-3",
+      "sessionId": "fixture-1",
+      "cardId": "k-4e00:production",
+      "itemId": "primary:k-4e00:production",
+      "kind": "scheduled",
+      "isFirstLearningCheck": true,
+      "grade": "got",
+      "assisted": false,
+      "hintKeysUsed": [],
+      "inputMode": "drawing",
+      "occurredAt": 1577880000000,
+      "durationMs": 0,
+      "beforeVersion": 0,
+      "afterVersion": 1,
+      "schedulerLog": {
+        "adapterVersion": 1,
+        "packageVersion": "6.0.0",
+        "model": "FSRS-7",
+        "revlog": {
+          "stability": 0,
+          "stabilityFast": 0,
+          "difficulty": 0,
+          "state": 0,
+          "scheduleStatus": "new",
+          "rating": 3,
+          "dueAt": 1577880000000,
+          "lastReviewAt": null,
+          "reviewTime": 1577880000000,
+          "cardId": "k-4e00:production",
+          "scheduledDays": 0,
+          "learningStep": 0
+        }
+      },
+      "datasetVersion": "4d5746dd603285b9ccd23e54b719cadf8b4ba41208d609c0cb4914cc4e35ed67"
+    },
+    {
+      "id": "fixture-4",
+      "sessionId": "fixture-1",
+      "cardId": "k-4eba:production",
+      "itemId": "primary:k-4eba:production",
+      "kind": "scheduled",
+      "isFirstLearningCheck": true,
+      "grade": "got",
+      "assisted": false,
+      "hintKeysUsed": [],
+      "inputMode": "drawing",
+      "occurredAt": 1577880000000,
+      "durationMs": 0,
+      "beforeVersion": 0,
+      "afterVersion": 1,
+      "schedulerLog": {
+        "adapterVersion": 1,
+        "packageVersion": "6.0.0",
+        "model": "FSRS-7",
+        "revlog": {
+          "stability": 0,
+          "stabilityFast": 0,
+          "difficulty": 0,
+          "state": 0,
+          "scheduleStatus": "new",
+          "rating": 3,
+          "dueAt": 1577880000000,
+          "lastReviewAt": null,
+          "reviewTime": 1577880000000,
+          "cardId": "k-4eba:production",
+          "scheduledDays": 0,
+          "learningStep": 0
+        }
+      },
+      "datasetVersion": "4d5746dd603285b9ccd23e54b719cadf8b4ba41208d609c0cb4914cc4e35ed67"
+    },
+    {
+      "id": "fixture-5",
+      "sessionId": "fixture-1",
+      "cardId": "k-5e74:production",
+      "itemId": "primary:k-5e74:production",
+      "kind": "scheduled",
+      "isFirstLearningCheck": true,
+      "grade": "got",
+      "assisted": false,
+      "hintKeysUsed": [],
+      "inputMode": "drawing",
+      "occurredAt": 1577880000000,
+      "durationMs": 0,
+      "beforeVersion": 0,
+      "afterVersion": 1,
+      "schedulerLog": {
+        "adapterVersion": 1,
+        "packageVersion": "6.0.0",
+        "model": "FSRS-7",
+        "revlog": {
+          "stability": 0,
+          "stabilityFast": 0,
+          "difficulty": 0,
+          "state": 0,
+          "scheduleStatus": "new",
+          "rating": 3,
+          "dueAt": 1577880000000,
+          "lastReviewAt": null,
+          "reviewTime": 1577880000000,
+          "cardId": "k-5e74:production",
+          "scheduledDays": 0,
+          "learningStep": 0
+        }
+      },
+      "datasetVersion": "4d5746dd603285b9ccd23e54b719cadf8b4ba41208d609c0cb4914cc4e35ed67"
+    },
+    {
+      "id": "fixture-7",
+      "sessionId": "fixture-6",
+      "cardId": "k-5927:production",
+      "itemId": "primary:k-5927:production",
+      "kind": "ambiguous",
+      "isFirstLearningCheck": true,
+      "grade": null,
+      "assisted": false,
+      "hintKeysUsed": [],
+      "inputMode": "drawing",
+      "occurredAt": 1577880000000,
+      "durationMs": 0,
+      "beforeVersion": 0,
+      "afterVersion": 1,
+      "schedulerLog": null,
+      "datasetVersion": "4d5746dd603285b9ccd23e54b719cadf8b4ba41208d609c0cb4914cc4e35ed67"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "fixture-1",
+      "status": "ended",
+      "revision": 21,
+      "startedAt": 1577880000000,
+      "endedAt": 1577880000000,
+      "startedLocalDay": "2020-01-01",
+      "datasetVersion": "4d5746dd603285b9ccd23e54b719cadf8b4ba41208d609c0cb4914cc4e35ed67",
+      "primaryLimit": 20,
+      "primaryItems": [
+        {
+          "id": "primary:k-65e5:production",
+          "cardId": "k-65e5:production",
+          "kanjiId": "k-65e5",
+          "origin": "new",
+          "status": "done",
+          "expectedCardVersion": 0
+        },
+        {
+          "id": "primary:k-4e00:production",
+          "cardId": "k-4e00:production",
+          "kanjiId": "k-4e00",
+          "origin": "new",
+          "status": "done",
+          "expectedCardVersion": 0
+        },
+        {
+          "id": "primary:k-4eba:production",
+          "cardId": "k-4eba:production",
+          "kanjiId": "k-4eba",
+          "origin": "new",
+          "status": "done",
+          "expectedCardVersion": 0
+        },
+        {
+          "id": "primary:k-5e74:production",
+          "cardId": "k-5e74:production",
+          "kanjiId": "k-5e74",
+          "origin": "new",
+          "status": "done",
+          "expectedCardVersion": 0
+        },
+        {
+          "id": "primary:k-5927:production",
+          "cardId": "k-5927:production",
+          "kanjiId": "k-5927",
+          "origin": "new",
+          "status": "skipped",
+          "expectedCardVersion": null
+        }
+      ],
+      "rematchItems": [],
+      "phase": {
+        "kind": "summary"
+      },
+      "completedEventIds": ["fixture-2", "fixture-3", "fixture-4", "fixture-5"]
+    },
+    {
+      "id": "fixture-6",
+      "status": "completed",
+      "revision": 6,
+      "startedAt": 1577880000000,
+      "endedAt": 1577880000000,
+      "startedLocalDay": "2020-01-01",
+      "datasetVersion": "4d5746dd603285b9ccd23e54b719cadf8b4ba41208d609c0cb4914cc4e35ed67",
+      "primaryLimit": 20,
+      "primaryItems": [
+        {
+          "id": "primary:k-5927:production",
+          "cardId": "k-5927:production",
+          "kanjiId": "k-5927",
+          "origin": "new",
+          "status": "skipped",
+          "expectedCardVersion": 0
+        }
+      ],
+      "rematchItems": [],
+      "phase": {
+        "kind": "summary"
+      },
+      "completedEventIds": ["fixture-7"]
+    }
+  ],
+  "settings": {
+    "id": "user",
+    "dailyNewLimit": 0,
+    "inputMode": "drawing",
+    "onboardingCompleted": true
+  },
+  "contentIssues": [
+    {
+      "id": "fixture-8",
+      "cardId": "k-5927:production",
+      "eventId": "fixture-7",
+      "reason": "ambiguous-prompt",
+      "createdAt": 1577880000000,
+      "datasetVersion": "4d5746dd603285b9ccd23e54b719cadf8b4ba41208d609c0cb4914cc4e35ed67"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+node_modules/
+dist/
+dist-e2e/
+coverage/
+playwright-report/
+test-results/
+data/raw/
+src/data/kanji.generated.json
+public/licenses/
+package-lock.json

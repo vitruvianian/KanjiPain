@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "4d5746dd603285b9ccd23e54b719cadf8b4ba41208d609c0cb4914cc4e35ed67",
+  "entryCount": 2136,
+  "generatedAt": 1794551173419,
+  "catalogSha256": "678f6b7ec215b5703ad6d0925b4bb12670de6288bc722e77639cbc132a9dc5cb",
+  "teachingNotesSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+  "source": {
+    "name": "KANJIDIC2",
+    "downloadUrl": "https://www.edrdg.org/kanjidic/kanjidic2.xml.gz",
+    "documentationUrl": "https://www.edrdg.org/wiki/KANJIDIC_Project.html",
+    "licenseUrl": "https://www.edrdg.org/edrdg/licence.html",
+    "license": "CC BY-SA 4.0",
+    "retrievedAt": 1794551018291,
+    "upstreamDate": "Fri, 13 Nov 2026 02:35:04 GMT",
+    "inputSha256": "8a308895abbb852c9e23ce44c74a4b59a910310be4f46a086f604eff9b2c7c08"
+  }
+}

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE kanjidic2 SYSTEM "kanjidic2.dtd">
+<kanjidic2>
+  <header>
+    <file_version>4</file_version>
+    <database_version>fixture</database_version>
+    <date_of_creation>2026-11-13</date_of_creation>
+  </header>
+  <character>
+    <literal>一</literal>
+    <misc>
+      <grade>1</grade>
+      <stroke_count>1</stroke_count>
+      <freq>2</freq>
+    </misc>
+    <reading_meaning>
+      <rmgroup>
+        <reading r_type="ja_on">イチ</reading>
+        <meaning>one</meaning>
+      </rmgroup>
+      <nanori>かず</nanori>
+    </reading_meaning>
+  </character>
+  <character>
+    <literal>食</literal>
+    <misc>
+      <grade>2</grade>
+      <stroke_count>9</stroke_count>
+      <freq>328</freq>
+    </misc>
+    <reading_meaning>
+      <rmgroup>
+        <reading r_type="ja_on">ショク</reading>
+        <reading r_type="ja_kun">た.べる</reading>
+        <meaning>eat</meaning>
+        <meaning>food</meaning>
+        <meaning m_lang="fr">nourriture</meaning>
+      </rmgroup>
+    </reading_meaning>
+  </character>
+  <character>
+    <literal>亜</literal>
+    <misc>
+      <grade>8</grade>
+      <stroke_count>7</stroke_count>
+      <stroke_count>8</stroke_count>
+    </misc>
+    <reading_meaning>
+      <rmgroup>
+        <reading r_type="ja_on">ア</reading>
+        <reading r_type="pinyin">ya4</reading>
+        <meaning>Asia</meaning>
+        <meaning>rank next</meaning>
+      </rmgroup>
+    </reading_meaning>
+  </character>
+  <character>
+    <literal>匂</literal>
+    <misc>
+      <grade>9</grade>
+      <stroke_count>4</stroke_count>
+    </misc>
+    <reading_meaning>
+      <rmgroup><reading r_type="ja_kun">にお.う</reading><meaning>fragrant</meaning></rmgroup>
+    </reading_meaning>
+  </character>
+  <character>
+    <literal>尭</literal>
+    <misc>
+      <grade>10</grade>
+      <stroke_count>8</stroke_count>
+    </misc>
+    <reading_meaning>
+      <rmgroup><reading r_type="ja_on">ギョウ</reading><meaning>high</meaning></rmgroup>
+    </reading_meaning>
+  </character>
+  <character>
+    <literal>㐂</literal>
+    <misc>
+      <stroke_count>6</stroke_count>
+    </misc>
+    <reading_meaning>
+      <rmgroup><reading r_type="ja_on">キ</reading><meaning>rejoice</meaning></rmgroup>
+    </reading_meaning>
+  </character>
+</kanjidic2>

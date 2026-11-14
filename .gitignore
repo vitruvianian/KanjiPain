@@ -1,0 +1,27 @@
+# Dependencies and builds
+node_modules/
+dist/
+dist-e2e/
+coverage/
+
+# Test output
+playwright-report/
+test-results/
+
+# Downloaded source data
+data/raw/
+
+# Local configuration
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# TypeScript incremental state
+*.tsbuildinfo
