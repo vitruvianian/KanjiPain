@@ -60,8 +60,8 @@ FSRS estimates scheduling needs; it does not measure a person's memory directly.
 5. Optional handwriting recognition with user override.
 6. Optional accounts, cross-device synchronization, and placement assessment.
 
-Version 1 does **not** pretend to provide automated handwriting correction,
-stroke-order scoring, complete vocabulary teaching, or curated hints for every
+Version 1 checks drawn characters against the expected form, including stroke
+order and direction, as a suggestion the learner can override. It does **not** pretend to provide complete vocabulary teaching, or curated hints for every
 character. The interface must not advertise unfinished features.
 
 ## 3. The learning experience
@@ -253,22 +253,23 @@ does not enroll it or update scheduling.
 
 ## 5. Technology decisions
 
-| Concern                    | Decision                                       | Reason                                                       |
-| -------------------------- | ---------------------------------------------- | ------------------------------------------------------------ |
-| Runtime/toolchain          | Node.js 24 LTS, npm, lockfile                  | Supports the chosen scheduler; one package manager           |
-| Frontend                   | React 19 + TypeScript strict + Vite 8          | Straightforward static browser application                   |
-| Routing                    | React Router 7, declarative HashRouter         | Works on static hosting without rewrite rules                |
-| Styling                    | Plain CSS with variables and component classes | Small dependency surface, explicit visual rules              |
-| Persistence                | IndexedDB through Dexie 4                      | Transactions, structured records, indexed queries            |
-| Reactive persistence reads | dexie-react-hooks                              | Update screens after committed database changes              |
-| Scheduling                 | ts-fsrs 6.0.0, FSRS-7                          | Existing scheduling implementation behind one adapter        |
-| Validation                 | Zod 4                                          | Validate catalog, backups, and persisted version boundaries  |
-| Drawing                    | SVG brush outlines (perfect-freehand 1.2.3)    | Stored centreline points; variable-width ink derived on draw |
-| Unit/integration tests     | Vitest, Testing Library, fake-indexeddb        | Deterministic domain/storage coverage                        |
-| Browser tests              | Playwright, Chromium initially                 | Verify actual drawing, reloads, and IndexedDB behavior       |
-| Code quality               | ESLint flat config + Prettier + TypeScript     | Explicit repeatable checks                                   |
-| Hosting                    | Static `dist/` on any HTTPS static host        | No server or recurring API costs required                    |
-| Data tooling               | Node scripts via tsx + fast-xml-parser         | Convert KANJIDIC2 once during content maintenance            |
+| Concern                    | Decision                                       | Reason                                                        |
+| -------------------------- | ---------------------------------------------- | ------------------------------------------------------------- |
+| Runtime/toolchain          | Node.js 24 LTS, npm, lockfile                  | Supports the chosen scheduler; one package manager            |
+| Frontend                   | React 19 + TypeScript strict + Vite 8          | Straightforward static browser application                    |
+| Routing                    | React Router 7, declarative HashRouter         | Works on static hosting without rewrite rules                 |
+| Styling                    | Plain CSS with variables and component classes | Small dependency surface, explicit visual rules               |
+| Persistence                | IndexedDB through Dexie 4                      | Transactions, structured records, indexed queries             |
+| Reactive persistence reads | dexie-react-hooks                              | Update screens after committed database changes               |
+| Scheduling                 | ts-fsrs 6.0.0, FSRS-7                          | Existing scheduling implementation behind one adapter         |
+| Validation                 | Zod 4                                          | Validate catalog, backups, and persisted version boundaries   |
+| Drawing                    | SVG brush outlines (perfect-freehand 1.2.3)    | Stored centreline points; variable-width ink derived on draw  |
+| Handwriting check          | Geometric stroke matching against KanjiVG      | Offline, deterministic, explains errors; learner can override |
+| Unit/integration tests     | Vitest, Testing Library, fake-indexeddb        | Deterministic domain/storage coverage                         |
+| Browser tests              | Playwright, Chromium initially                 | Verify actual drawing, reloads, and IndexedDB behavior        |
+| Code quality               | ESLint flat config + Prettier + TypeScript     | Explicit repeatable checks                                    |
+| Hosting                    | Static `dist/` on any HTTPS static host        | No server or recurring API costs required                     |
+| Data tooling               | Node scripts via tsx + fast-xml-parser         | Convert KANJIDIC2 once during content maintenance             |
 
 Choose compatible stable versions in the specified majors at bootstrap, pin exact
 direct dependency versions, and commit `package-lock.json`. `ts-fsrs` is pinned
@@ -276,7 +277,9 @@ specifically because version 6 uses a different API from version 5. Never copy o
 `fsrs()/repeat()` examples into the version 6 integration.
 
 There is no backend, authentication, global state library, analytics service,
-remote LLM, or handwriting model in version 1. Local-first means progress is local
+remote LLM, or neural handwriting model in version 1. Drawn attempts are verified
+locally against bundled reference strokes (`src/recognition/`); the verdict only
+suggests a grade. Local-first means progress is local
 and practice works without network requests once the app has loaded. Offline
 reload/install support is a separate PWA milestone, not a version 1 promise.
 

@@ -1,5 +1,6 @@
 import { useAppServices } from '../../app/useAppServices';
 import { APP_VERSION } from '../../app/version';
+import strokesManifest from '../../data/strokes-manifest.json';
 import { formatDate } from '../format';
 
 function externalLink(href: string, children: string) {
@@ -136,6 +137,46 @@ export function SourcesPage() {
           <code>k-6e56</code>). Curriculum order is deterministic: grade, frequency rank, then code
           point. A data refresh does not rename IDs or reset user progress.
         </p>
+      </section>
+
+      <section className="panel" aria-labelledby="kanjivg-title">
+        <h2 id="kanjivg-title">KanjiVG stroke data</h2>
+        <p>
+          Drawings are checked against stroke shapes, order and direction derived from{' '}
+          <strong>KanjiVG</strong>, copyright © 2009–2013 Ulrich Apel. The bundled data is a
+          transformed extract: each of the {strokesManifest.strokeTotal.toLocaleString()} strokes of
+          the catalog&apos;s characters is reduced to a simplified line. It is distributed under{' '}
+          <strong>{strokesManifest.source.license}</strong>.
+        </p>
+        <ul className="source-links">
+          <li>{externalLink(strokesManifest.source.projectUrl, 'KanjiVG project')}</li>
+          <li>
+            {externalLink(
+              strokesManifest.source.downloadUrl,
+              `KanjiVG release ${strokesManifest.source.release}`,
+            )}
+          </li>
+          <li>{externalLink(strokesManifest.source.licenseUrl, 'CC BY-SA 3.0 license')}</li>
+          <li>
+            <a href={`${licenseBase}licenses/kanjivg-license.txt`} target="_blank" rel="noreferrer">
+              Bundled KanjiVG license notice
+            </a>
+          </li>
+        </ul>
+        <dl className="hash-list">
+          <div>
+            <dt>Stroke data SHA-256</dt>
+            <dd>
+              <code className="hash">{strokesManifest.strokesSha256}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>Source input SHA-256</dt>
+            <dd>
+              <code className="hash">{strokesManifest.source.inputSha256}</code>
+            </dd>
+          </div>
+        </dl>
       </section>
 
       <section className="panel" aria-labelledby="font-title">

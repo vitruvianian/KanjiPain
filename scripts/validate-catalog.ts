@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { z } from 'zod';
+
 import { catalogManifestSchema, teachingNotesSchema } from '../src/domain/schemas';
 import {
   datasetVersion,
@@ -9,6 +11,20 @@ import {
   sha256,
   validateProductionCatalog,
 } from './catalog-pipeline';
+
+const strokesManifestSchema = z.looseObject({
+  entryCount: z.literal(EXPECTED_JOYO_COUNT),
+  strokeTotal: z.number().int().positive(),
+  strokesSha256: z.string().regex(/^[0-9a-f]{64}$/),
+  strokeCountDifferences: z.array(
+    z.strictObject({
+      id: z.string(),
+      literal: z.string(),
+      catalog: z.number().int().positive(),
+      kanjivg: z.number().int().positive(),
+    }),
+  ),
+});
 
 function parseJson(text: string, label: string): unknown {
   try {
@@ -53,8 +69,36 @@ export async function validateGeneratedCatalog(): Promise<void> {
     throw new Error('Dataset version does not match the documented hash formula.');
   }
 
+  const strokesBytes = await readFile(resolve('src/data/strokes.generated.json'));
+  const strokesManifest = strokesManifestSchema.parse(
+    parseJson(
+      await readFile(resolve('src/data/strokes-manifest.json'), 'utf8'),
+      'strokes manifest',
+    ),
+  );
+  const strokes = z
+    .record(z.string(), z.array(z.string().regex(/^(?:[0-9a-f]{4}){2,}$/)).min(1))
+    .parse(parseJson(strokesBytes.toString('utf8'), 'reference strokes'));
+  if (strokesManifest.strokesSha256 !== sha256(strokesBytes)) {
+    throw new Error('Reference strokes SHA-256 does not match its manifest.');
+  }
+  const missingStrokes = catalog.filter((entry) => strokes[entry.id] === undefined);
+  if (missingStrokes.length > 0 || Object.keys(strokes).length !== catalog.length) {
+    throw new Error('Reference strokes do not cover exactly the catalog characters.');
+  }
+  const expectedDifferences = new Map(
+    strokesManifest.strokeCountDifferences.map((difference) => [difference.id, difference.kanjivg]),
+  );
+  for (const entry of catalog) {
+    const count = strokes[entry.id]?.length;
+    if (count !== (expectedDifferences.get(entry.id) ?? entry.strokeCount)) {
+      throw new Error(`Unreviewed stroke-count difference for ${entry.literal}.`);
+    }
+  }
+
   console.log(
-    `Validated ${String(catalog.length)} unique Jōyō kanji (dataset ${manifest.datasetVersion}).`,
+    `Validated ${String(catalog.length)} unique Jōyō kanji (dataset ${manifest.datasetVersion}) ` +
+      `and their ${String(strokesManifest.strokeTotal)} reference strokes.`,
   );
 }
 

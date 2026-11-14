@@ -163,8 +163,9 @@ export function PracticePage() {
           phase={phase}
           entry={entry}
           busy={busy}
-          onGrade={(grade) => {
-            void practice.grade(grade);
+          literalOf={(id) => catalog.byId(id)?.literal}
+          onGrade={(grade, checkerVerdict) => {
+            void practice.grade(grade, checkerVerdict);
           }}
           onFlagAmbiguous={() => {
             void practice.flagAmbiguous();

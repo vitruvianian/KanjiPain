@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { Button } from '../../components/Button';
 import { DrawingPad } from '../../components/DrawingPad';
+import { StrokeOrder } from '../../components/StrokeOrder';
 import type { RepairPhase } from '../../domain/session-types';
 import type { KanjiEntry, Stroke } from '../../domain/types';
 import type { DraftChange } from '../../services/session-service';
@@ -56,6 +57,7 @@ export function RepairPanel({ phase, entry, busy, onSaveDraft, onFinishRepair }:
           <p>
             {entry.meanings.join(', ')} · <span lang="ja">{entry.onReadings.join('・')}</span>
           </p>
+          <StrokeOrder key={entry.id} kanjiId={entry.id} literal={entry.literal} />
           <Button
             disabled={busy}
             onClick={() => {

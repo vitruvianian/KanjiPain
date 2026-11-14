@@ -66,6 +66,20 @@ describe('transactional grading', () => {
     expect(current.scheduler.review.mock.calls).toHaveLength(1);
   });
 
+  it('records the handwriting checker verdict beside the learner grade', async () => {
+    const current = await harness('checker-verdict');
+    const feedback = await revealDrawnPrompt(current);
+    const result = await current.reviews.commitGrade({
+      ...gradeInput(feedback, 'got'),
+      checkerVerdict: 'mismatch',
+    });
+
+    expect(result.event).toMatchObject({ grade: 'got', checkerVerdict: 'mismatch' });
+    await expect(current.database.events.get(result.event.id)).resolves.toMatchObject({
+      checkerVerdict: 'mismatch',
+    });
+  });
+
   it('rolls back card, event, and queue changes after a failed event write', async () => {
     const current = await harness('rollback');
     const feedback = await revealDrawnPrompt(current);

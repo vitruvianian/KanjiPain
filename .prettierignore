@@ -6,5 +6,6 @@ playwright-report/
 test-results/
 data/raw/
 src/data/kanji.generated.json
+src/data/strokes.generated.json
 public/licenses/
 package-lock.json

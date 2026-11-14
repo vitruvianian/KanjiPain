@@ -13,6 +13,14 @@ export const localDayKeySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 export const kanjiIdSchema = z.string().regex(/^k-[0-9a-f]{4,6}$/);
 export const skillSchema = z.literal('production');
 export const gradeSchema = z.enum(['got', 'barely', 'missed']);
+export const checkerVerdictSchema = z.enum([
+  'match',
+  'order',
+  'direction',
+  'stroke-count',
+  'lookalike',
+  'mismatch',
+]);
 export const inputModeSchema = z.enum(['drawing', 'paper']);
 export const hintKeySchema = z.enum(['mnemonic', 'component', 'stroke-count', 'full-answer']);
 export const sessionItemStatusSchema = z.enum(['pending', 'done', 'skipped']);
@@ -203,6 +211,7 @@ export const reviewEventSchema = z
     afterVersion: nonNegativeIntegerSchema,
     schedulerLog: serializedFsrsLogSchema.nullable(),
     datasetVersion: sha256Schema,
+    checkerVerdict: checkerVerdictSchema.optional(),
   })
   .superRefine((event, context) => {
     if (event.kind === 'ambiguous' && event.grade !== null) {

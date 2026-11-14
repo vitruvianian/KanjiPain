@@ -1,6 +1,7 @@
 import { memo, useEffect, useId, useMemo, useRef, useState, type PointerEvent } from 'react';
 
 import type { Stroke } from '../domain/types';
+import type { StrokeMark } from '../recognition/check';
 import {
   BRUSH,
   INITIAL_PRESSURE,
@@ -16,6 +17,10 @@ interface DrawingPadProps {
   onStrokesChange: (strokes: Stroke[]) => void;
   readOnly?: boolean;
   label?: string;
+  /** Checker result per stroke, shown as ink colour on a submitted drawing. */
+  marks?: readonly StrokeMark[] | undefined;
+  /** The correct strokes, drawn faintly over a submitted drawing. */
+  guide?: readonly Stroke[] | undefined;
 }
 
 interface ActiveStroke {
@@ -54,23 +59,44 @@ function isTextEntry(target: EventTarget | null): boolean {
   );
 }
 
-const StrokeShape = memo(function StrokeShape({ stroke }: { stroke: Stroke }) {
+const StrokeShape = memo(function StrokeShape({
+  stroke,
+  mark,
+}: {
+  stroke: Stroke;
+  mark?: StrokeMark | undefined;
+}) {
   const path = useMemo(() => strokeOutlinePath(stroke, true), [stroke]);
   const first = stroke[0];
   if (first === undefined) return null;
+  const className = mark === undefined || mark === 'ok' ? undefined : `drawing-ink--${mark}`;
   if (stroke.length === 1) {
     return (
-      <circle data-stroke cx={first.x * VIEW_SIZE} cy={first.y * VIEW_SIZE} r={BRUSH.dotRadius} />
+      <circle
+        data-stroke
+        className={className}
+        cx={first.x * VIEW_SIZE}
+        cy={first.y * VIEW_SIZE}
+        r={BRUSH.dotRadius}
+      />
     );
   }
-  return <path data-stroke d={path} />;
+  return <path data-stroke className={className} d={path} />;
 });
+
+function guidePoints(stroke: Stroke): string {
+  return stroke
+    .map((point) => `${String(point.x * VIEW_SIZE)},${String(point.y * VIEW_SIZE)}`)
+    .join(' ');
+}
 
 function DrawingSurface({
   strokes,
   onStrokesChange,
   readOnly = false,
   label = 'Kanji drawing area',
+  marks,
+  guide,
 }: DrawingPadProps) {
   const descriptionId = useId();
   const active = useRef<ActiveStroke | null>(null);
@@ -245,9 +271,16 @@ function DrawingSurface({
         </g>
         <g className="drawing-ink" data-testid="completed-strokes">
           {strokes.map((stroke, index) => (
-            <StrokeShape key={index} stroke={stroke} />
+            <StrokeShape key={index} stroke={stroke} mark={marks?.[index]} />
           ))}
         </g>
+        {guide === undefined ? null : (
+          <g className="drawing-model" data-testid="model-strokes" aria-hidden="true">
+            {guide.map((stroke, index) => (
+              <polyline key={index} points={guidePoints(stroke)} />
+            ))}
+          </g>
+        )}
         <g className="drawing-ink" aria-hidden="true">
           {drawing ? <path ref={livePath} d="" /> : null}
         </g>

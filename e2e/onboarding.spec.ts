@@ -1,6 +1,6 @@
 import { expect, test } from './test';
 
-import { drawStroke, enterDojo } from './helpers';
+import { drawStroke, enterDojo, gradeGotItDespiteChecker } from './helpers';
 
 test('first visit explains the product, persists onboarding, and reaches a summary', async ({
   page,
@@ -29,7 +29,7 @@ test('first visit explains the product, persists onboarding, and reaches a summa
   await drawStroke(page);
   await page.getByRole('button', { name: 'Compare answer' }).click();
   await expect(page.getByRole('heading', { name: 'The character was' })).toBeVisible();
-  await page.getByRole('button', { name: 'Got it', exact: true }).click();
+  await gradeGotItDespiteChecker(page);
   await expect(page.getByRole('heading', { name: 'Meet the character' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Finish session' }).click();

@@ -8,7 +8,7 @@ import {
   reviewEventSchema,
   sessionRecordSchema,
 } from '../domain/schemas';
-import type { CardRecord, ContentIssue, Grade, ReviewEvent } from '../domain/types';
+import type { CardRecord, CheckerVerdict, ContentIssue, Grade, ReviewEvent } from '../domain/types';
 import type { SchedulerAdapter } from '../scheduler/types';
 import type { KanjiPainDatabase } from '../storage/database';
 import {
@@ -33,6 +33,8 @@ export interface CommitGradeInput {
   readonly expectedRevision: number;
   readonly expectedCardVersion: number;
   readonly grade: Grade;
+  /** The handwriting checker's verdict, recorded alongside the learner's grade. */
+  readonly checkerVerdict?: CheckerVerdict | undefined;
 }
 
 export interface FlagAmbiguousInput {
@@ -254,6 +256,9 @@ export class ReviewService {
             afterVersion: updatedCard.version,
             schedulerLog: scheduled?.log ?? null,
             datasetVersion: session.datasetVersion,
+            ...(input.checkerVerdict === undefined || session.phase.draft.inputMode !== 'drawing'
+              ? {}
+              : { checkerVerdict: input.checkerVerdict }),
           });
           const retryItemId = retryIdNeeded(item, grade) ? this.#ids.next() : undefined;
           const updatedSession = reduceSession(session, {

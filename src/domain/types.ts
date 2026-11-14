@@ -5,6 +5,9 @@ export type KanjiId = string;
 export type Skill = 'production';
 export type Grade = 'got' | 'barely' | 'missed';
 export type InputMode = 'drawing' | 'paper';
+/** What the handwriting checker concluded about a drawn attempt. */
+export type CheckerVerdict =
+  'match' | 'order' | 'direction' | 'stroke-count' | 'lookalike' | 'mismatch';
 export type HintKey = 'mnemonic' | 'component' | 'stroke-count' | 'full-answer';
 
 export interface KanjiEntry {
@@ -133,6 +136,8 @@ export interface ReviewEvent {
   afterVersion: number;
   schedulerLog: SerializedFsrsLog | null;
   datasetVersion: string;
+  /** Present only when the checker judged a drawn attempt. The grade is still the learner's. */
+  checkerVerdict?: CheckerVerdict | undefined;
 }
 
 export interface ContentIssue {

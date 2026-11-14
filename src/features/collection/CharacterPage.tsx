@@ -1,3 +1,4 @@
+import { StrokeOrder } from '../../components/StrokeOrder';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
@@ -226,6 +227,11 @@ export function CharacterPage() {
           are written in kana, as in <span lang="ja">た.べる</span>. A hyphen (-) marks an affix
           boundary. These marks are structural, not extra sounds.
         </p>
+      </section>
+
+      <section className="panel" aria-labelledby="stroke-order-title">
+        <h2 id="stroke-order-title">How to write it</h2>
+        <StrokeOrder key={entry.id} kanjiId={entry.id} literal={entry.literal} />
       </section>
 
       <section className="panel" aria-labelledby="progress-title">

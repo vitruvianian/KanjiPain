@@ -1,8 +1,8 @@
 # KanjiPain
 
-Effortful kanji recall practice. Version **0.1.0** implements the version 1 writing-practice scope: all **2,136 Jōyō kanji**, scheduled reviews, drawing or paper input, honest self-grading, and portable local progress.
+Effortful kanji recall practice. Version **0.1.0** implements the version 1 writing-practice scope: all **2,136 Jōyō kanji**, scheduled reviews, drawing or paper input, automatic checking of drawn characters with honest self-grading as the final word, and portable local progress.
 
-No backend, account, analytics, AI grading, or runtime dictionary API is required.
+No backend, account, analytics, remote AI grading, or runtime dictionary API is required. Drawings are checked in the browser against bundled stroke data.
 
 ## Run locally
 
@@ -19,14 +19,21 @@ Open the URL printed by Vite. Dependencies are pinned in `package-lock.json`; or
 ## Practice
 
 1. Enter the Dojo. Start a session or resume the active one.
-2. For a new character, study the introduction, then hide it. Recall prompts show up to three English meanings and Japanese reading cues, not the target glyph.
+2. For a new character, study the introduction, then hide it. The introduction shows how to write the character: an animation draws the strokes in order, each numbered at its starting point, with a step-by-step chart below. The same guide appears on each character's Collection page and when the answer is shown during repair. Recall prompts show up to three English meanings and Japanese reading cues, not the target glyph.
 3. Draw at least one stroke, or select **Write on paper** and confirm your paper attempt. Compare only when ready; your submitted drawing is frozen.
-4. Grade the answer yourself:
+4. For a drawn attempt, the app checks your strokes against the standard form and shows a verdict with a suggested grade:
+   - **Matches** → suggests Got it.
+   - **Right shape, wrong stroke order or direction**, or strokes joined/split → suggests Barely.
+   - **Wrong stroke count, a look-alike character, or no match** → suggests Missed it.
+
+   The checker compares stroke shape, position, order and direction after normalizing for where and how large you drew. It can be wrong, so the grade stays yours: grading a rejected drawing as correct asks for one confirmation. The verdict is saved with the review. Paper attempts, and the nine characters with two accepted stroke counts when drawn in the other form, are self-graded as before.
+
+5. Grade the answer:
    - **Got it**: correct without extra help → FSRS Good.
    - **Barely**: correct but hesitant → FSRS Hard.
    - **Missed it**: wrong or incomplete → FSRS Again.
    - Any requested hint, full-answer reveal, or **I don't know** makes the attempt assisted and forces a miss. Switching input modes or reloading cannot undo assistance. The service enforces this, not just the buttons.
-5. After a miss, repair is unscored. A rematch normally follows three distinct other card completions; short queues explicitly offer less-spaced practice. Each character gets at most two rematches per session.
+6. After a miss, repair is unscored. A rematch normally follows three distinct other card completions; short queues explicitly offer less-spaced practice. Each character gets at most two rematches per session.
 
 Only primary attempts update FSRS, including a new character's first graded check. Rematches record local practice but never alter the schedule or count as independent reviews. The adapter pins `ts-fsrs@6.0.0`, FSRS-7, desired retention 0.9, short-term scheduling off, fuzz off, and maximum interval 36,500 days.
 
@@ -55,7 +62,8 @@ Local-first does **not** mean installable/offline-first: once app assets and the
 | `npm run lint`                            | ESLint                                                                  |
 | `npm run typecheck`                       | Strict TypeScript project checks                                        |
 | `npm test` / `npm run test:watch`         | Unit/integration tests, once/watch                                      |
-| `npm run data:validate`                   | Validate catalog, notes, manifest hashes, and 2,136 count               |
+| `npm run data:validate`                   | Validate catalog, notes, stroke data, manifest hashes, and 2,136 count  |
+| `npm run checker:selftest`                | Redraw every character with simulated hand error and report accuracy    |
 | `npm run check`                           | Formatting, lint, types, catalog validation, all unit/integration tests |
 | `npm run build`                           | Production app in `dist/`                                               |
 | `npm run preview -- --host 127.0.0.1`     | Serve the production build locally                                      |
@@ -96,9 +104,9 @@ Publish `dist/` at `/kanjipain/`. Keep the origin stable; moving to another orig
 
 ## Sources and limits
 
-Catalog data is a transformed KANJIDIC2 extract, attributed to **James William Breen and EDRDG**, under **CC BY-SA 4.0**, separate from any application-code license. Japanese glyphs use bundled **Noto Sans JP**, under **SIL OFL 1.1**. The in-app Sources & licenses page ships the attribution, transformation notice, dates, hashes, and license copies. See [DATA_SOURCES.md](./DATA_SOURCES.md) for provenance and monthly/pre-release maintenance.
+Catalog data is a transformed KANJIDIC2 extract, attributed to **James William Breen and EDRDG**, under **CC BY-SA 4.0**, separate from any application-code license. Stroke data for checking drawings is a transformed KanjiVG extract, © **Ulrich Apel**, under **CC BY-SA 3.0**. Japanese glyphs use bundled **Noto Sans JP**, under **SIL OFL 1.1**. The in-app Sources & licenses page ships the attribution, transformation notice, dates, hashes, and license copies. See [DATA_SOURCES.md](./DATA_SOURCES.md) for provenance and monthly/pre-release maintenance.
 
-Version 1 does not recognize handwriting, assess stroke order, provide a full reading/vocabulary curriculum, promise curated mnemonics for every character, sync accounts, or guarantee PWA installation/offline cold starts. Dictionary cues can be ambiguous; use the local pause/resume workflow rather than treating ambiguity as a recall failure. The bundled catalog currently produces a non-fatal Vite chunk-size warning.
+The handwriting checker verifies a drawing against the one expected character; it does not recognize arbitrary handwriting, and its thresholds are calibrated on simulated hand error, not yet on collected real handwriting. Version 1 does not provide a full reading/vocabulary curriculum, promise curated mnemonics for every character, sync accounts, or guarantee PWA installation/offline cold starts. Dictionary cues can be ambiguous; use the local pause/resume workflow rather than treating ambiguity as a recall failure. The bundled catalog currently produces a non-fatal Vite chunk-size warning.
 
 Dependency audit at handoff (2026-11-14): `npm audit` reports 9 moderate findings in the development-only ESLint/TypeScript-ESLint/minimatch chain; `npm audit --omit=dev` reports zero. Review toolchain updates separately rather than running `npm audit fix --force` against the pinned stack.
 

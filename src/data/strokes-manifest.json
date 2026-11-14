@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "entryCount": 2136,
+  "strokeTotal": 22366,
+  "strokesSha256": "6da1920d155c3c9f0061e7688f1b809125258437058c1efa0c8fbe6b9a5a62f9",
+  "strokeCountDifferences": [
+    {
+      "id": "k-845b",
+      "literal": "葛",
+      "catalog": 11,
+      "kanjivg": 12
+    },
+    {
+      "id": "k-8ced",
+      "literal": "賭",
+      "catalog": 15,
+      "kanjivg": 16
+    },
+    {
+      "id": "k-8b0e",
+      "literal": "謎",
+      "catalog": 16,
+      "kanjivg": 17
+    },
+    {
+      "id": "k-7259",
+      "literal": "牙",
+      "catalog": 5,
+      "kanjivg": 4
+    },
+    {
+      "id": "k-9905",
+      "literal": "餅",
+      "catalog": 14,
+      "kanjivg": 15
+    },
+    {
+      "id": "k-990c",
+      "literal": "餌",
+      "catalog": 14,
+      "kanjivg": 15
+    },
+    {
+      "id": "k-50c5",
+      "literal": "僅",
+      "catalog": 12,
+      "kanjivg": 13
+    },
+    {
+      "id": "k-905c",
+      "literal": "遜",
+      "catalog": 13,
+      "kanjivg": 14
+    },
+    {
+      "id": "k-9061",
+      "literal": "遡",
+      "catalog": 13,
+      "kanjivg": 14
+    }
+  ],
+  "source": {
+    "name": "KanjiVG",
+    "release": "r20260714",
+    "downloadUrl": "https://github.com/KanjiVG/kanjivg/releases/download/r20260714/kanjivg-20260714.xml.gz",
+    "projectUrl": "https://kanjivg.tagaini.net",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "license": "CC BY-SA 3.0",
+    "retrievedAt": 1794625319590,
+    "inputSha256": "d4a8e5e11533fe6a5d81a158b2c153964322641d2982c90a919461f3c06dca6b"
+  }
+}

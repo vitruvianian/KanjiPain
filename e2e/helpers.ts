@@ -98,3 +98,33 @@ export async function gradeVisibleFeedback(
   }
   await expect(page.getByRole('heading', { name: 'The character was' })).not.toBeVisible();
 }
+
+/** Grades a deliberately wrong test drawing as correct, through the checker's confirmation. */
+export async function gradeGotItDespiteChecker(page: Page): Promise<void> {
+  await expect(page.getByText('Suggested grade: Missed it.', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Got it', exact: true }).click();
+  await page.getByRole('button', { name: 'Yes, the checker is wrong' }).click();
+}
+
+/** Draws straight segments through points given as fractions of the drawing area. */
+export async function drawLine(
+  page: Page,
+  points: readonly (readonly [number, number])[],
+): Promise<void> {
+  const surface = page.getByRole('img', { name: 'Kanji drawing area' });
+  // The pad can start below the fold; pointer input outside the viewport is dropped.
+  await surface.scrollIntoViewIfNeeded();
+  const bounds = await surface.boundingBox();
+  const [first, ...rest] = points;
+  if (bounds === null || first === undefined) {
+    throw new Error('Drawing surface is unavailable.');
+  }
+  const at = ([x, y]: readonly [number, number]) =>
+    [bounds.x + bounds.width * x, bounds.y + bounds.height * y] as const;
+  await page.mouse.move(...at(first));
+  await page.mouse.down();
+  for (const point of rest) {
+    await page.mouse.move(...at(point), { steps: 6 });
+  }
+  await page.mouse.up();
+}

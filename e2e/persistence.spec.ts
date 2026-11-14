@@ -1,6 +1,11 @@
 import { expect, test } from './test';
 
-import { completePaperAttempt, drawStroke, storedActiveSession } from './helpers';
+import {
+  completePaperAttempt,
+  drawStroke,
+  storedActiveSession,
+  gradeGotItDespiteChecker,
+} from './helpers';
 
 test('reloading prompt and feedback never exposes another answer or resets the attempt', async ({
   page,
@@ -31,7 +36,7 @@ test('reloading prompt and feedback never exposes another answer or resets the a
   await expect(page.getByRole('img', { name: 'Your submitted drawing' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Got it', exact: true })).toBeEnabled();
 
-  await page.getByRole('button', { name: 'Got it', exact: true }).click();
+  await gradeGotItDespiteChecker(page);
   await expect(page.getByRole('heading', { name: 'Meet the character' })).toBeVisible();
   await page.getByRole('button', { name: 'Finish session' }).click();
   await expect(page.getByRole('heading', { name: 'Session summary' })).toBeVisible();
