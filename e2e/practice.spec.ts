@@ -1,6 +1,12 @@
 import { BROWSER_TIME, expect, test } from './test';
 
-import { completePaperAttempt, drawStroke, enterDojo, importBackup } from './helpers';
+import {
+  completePaperAttempt,
+  drawStroke,
+  enterDojo,
+  importBackup,
+  gradeGotItDespiteChecker,
+} from './helpers';
 
 test('draws a real character, grades it, and finishes with a summary', async ({ page }) => {
   await page.goto('/#/practice');
@@ -17,7 +23,7 @@ test('draws a real character, grades it, and finishes with a summary', async ({ 
   await expect(page.getByRole('heading', { name: 'The character was' })).toBeVisible();
   await expect(page.getByRole('img', { name: 'Your submitted drawing' })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Got it' }).click();
+  await gradeGotItDespiteChecker(page);
   await expect(page.getByRole('heading', { name: 'Meet the character' })).toBeVisible();
   await expect(page.locator('.practice-progress')).toContainText('4 primary');
 
@@ -210,7 +216,7 @@ test('a stale second tab reloads canonical state instead of clobbering the sessi
   await page.getByRole('button', { name: 'Hide and try' }).click();
   await drawStroke(page);
   await page.getByRole('button', { name: 'Compare answer' }).click();
-  await page.getByRole('button', { name: 'Got it', exact: true }).click();
+  await gradeGotItDespiteChecker(page);
   await expect(page.getByRole('heading', { name: 'Meet the character' })).toBeVisible();
 
   await second.getByRole('button', { name: 'Hide and try' }).click();
@@ -270,7 +276,7 @@ test('after assets load, a complete session works with the network disabled', as
   await page.getByRole('button', { name: 'Hide and try' }).click();
   await drawStroke(page);
   await page.getByRole('button', { name: 'Compare answer' }).click();
-  await page.getByRole('button', { name: 'Got it', exact: true }).click();
+  await gradeGotItDespiteChecker(page);
   await expect(page.getByRole('heading', { name: 'Meet the character' })).toBeVisible();
   await page.getByRole('button', { name: 'Finish session' }).click();
   await expect(page.getByRole('heading', { name: 'Session summary' })).toBeVisible();

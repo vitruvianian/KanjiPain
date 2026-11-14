@@ -1,6 +1,13 @@
 import { BROWSER_TIME, expect, test } from './test';
 
-import { drawStroke, enterDojo, importBackup, importBackupFile, setDailyNewLimit } from './helpers';
+import {
+  drawStroke,
+  enterDojo,
+  importBackup,
+  importBackupFile,
+  setDailyNewLimit,
+  gradeGotItDespiteChecker,
+} from './helpers';
 
 test('exporting then importing into a fresh context preserves schedule, history, and summary', async ({
   page,
@@ -13,7 +20,7 @@ test('exporting then importing into a fresh context preserves schedule, history,
   await page.getByRole('button', { name: 'Hide and try' }).click();
   await drawStroke(page);
   await page.getByRole('button', { name: 'Compare answer' }).click();
-  await page.getByRole('button', { name: 'Got it', exact: true }).click();
+  await gradeGotItDespiteChecker(page);
   await expect(page.getByRole('heading', { name: 'Session summary' })).toBeVisible();
   const summaryUrl = page.url();
 

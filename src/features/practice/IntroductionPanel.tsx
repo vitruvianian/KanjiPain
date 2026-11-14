@@ -1,4 +1,5 @@
 import { Button } from '../../components/Button';
+import { StrokeOrder } from '../../components/StrokeOrder';
 import type { KanjiEntry, TeachingNote } from '../../domain/types';
 
 interface IntroductionPanelProps {
@@ -48,7 +49,11 @@ export function IntroductionPanel({ entry, note, busy, onHide }: IntroductionPan
           <strong>Component cue:</strong> {note.componentHint}
         </p>
       )}
-      <p>Study the shape now. Next you will hide it and write it from memory.</p>
+      <h3>How to write it</h3>
+      <StrokeOrder key={entry.id} kanjiId={entry.id} literal={entry.literal} />
+      <p>
+        Study the shape and the stroke order now. Next you will hide it and write it from memory.
+      </p>
       <Button variant="primary" onClick={onHide} disabled={busy}>
         Hide and try
       </Button>

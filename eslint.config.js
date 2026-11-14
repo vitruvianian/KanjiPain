@@ -14,6 +14,7 @@ export default tseslint.config(
       'test-results/**',
       'data/raw/**',
       'src/data/kanji.generated.json',
+      'src/data/strokes.generated.json',
       'public/licenses/**',
     ],
   },
@@ -48,6 +49,14 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.flat.recommended.rules,
       ...reactRefresh.configs.vite.rules,
+    },
+  },
+  {
+    // Numeric loops index arrays whose bounds are known by construction. Under
+    // noUncheckedIndexedAccess each read needs a cast; `!` is banned by the strict preset.
+    files: ['src/recognition/geometry.ts', 'src/recognition/check.ts'],
+    rules: {
+      '@typescript-eslint/non-nullable-type-assertion-style': 'off',
     },
   },
 );

@@ -24,6 +24,9 @@
     "data:fetch": "tsx scripts/fetch-kanjidic.ts",
     "data:import": "tsx scripts/import-kanjidic.ts",
     "data:validate": "tsx scripts/validate-catalog.ts",
+    "strokes:fetch": "tsx scripts/fetch-kanjivg.ts",
+    "strokes:import": "tsx scripts/import-kanjivg.ts",
+    "checker:selftest": "tsx scripts/checker-selftest.ts",
     "e2e:fixtures": "tsx scripts/generate-e2e-fixtures.ts",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run data:validate && npm run test"
   },

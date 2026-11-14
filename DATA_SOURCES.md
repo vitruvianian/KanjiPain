@@ -19,6 +19,30 @@ The resulting KANJIDIC2-derived data remains under CC BY-SA 4.0. This data licen
 
 Current source hashes, retrieval time, upstream header date, generated catalog hash, and dataset version are recorded in [`src/data/catalog-manifest.json`](./src/data/catalog-manifest.json).
 
+## KanjiVG
+
+Reference strokes for checking drawn characters are derived from **KanjiVG**, copyright © 2009–2013 Ulrich Apel.
+
+- Project: <https://kanjivg.tagaini.net>
+- Release used: recorded in [`src/data/strokes-manifest.json`](./src/data/strokes-manifest.json), with the download URL and input SHA-256
+- License: Creative Commons Attribution-ShareAlike 3.0 (CC BY-SA 3.0)
+- Bundled notice: [`public/licenses/kanjivg-license.txt`](./public/licenses/kanjivg-license.txt)
+
+[`src/data/strokes.generated.json`](./src/data/strokes.generated.json) is a transformed extract: for each catalog character, every stroke path is flattened to a line, simplified, and stored on a 0–255 grid in stroke order. Component groupings and stroke-type labels are not distributed. The adapted data remains under CC BY-SA 3.0.
+
+KanjiVG and KANJIDIC2 disagree on the stroke count of nine characters that have two accepted written forms (for example 賭). They are listed under `strokeCountDifferences` in the strokes manifest. `data:validate` fails on any difference not listed there, so a new one must be reviewed before release. For these characters the checker does not judge a drawing made with the catalog's stroke count.
+
+To refresh the stroke data, update `KANJIVG_RELEASE` and the download URL in `scripts/kanjivg-pipeline.ts`, then:
+
+```sh
+npm run strokes:fetch
+npm run strokes:import
+npm run data:validate
+npm run checker:selftest
+```
+
+`strokes:fetch` downloads into ignored `data/raw/`; `strokes:import` never downloads. Review the manifest diff and the self-test report (it takes a few minutes): correct drawings should stay at 100% accepted, and the wrongly accepted list should stay short. Re-run `strokes:import` whenever the kanji catalog changes, since the stroke file must cover exactly the catalog's characters.
+
 ## Noto Sans JP
 
 The interface bundles Noto Sans JP through the `@fontsource/noto-sans-jp` package. The font software is licensed under the SIL Open Font License 1.1.

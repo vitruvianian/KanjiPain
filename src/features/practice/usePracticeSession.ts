@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAppServices } from '../../app/useAppServices';
 import type { SessionRecord } from '../../domain/session-types';
-import type { Grade, HintKey } from '../../domain/types';
+import type { CheckerVerdict, Grade, HintKey } from '../../domain/types';
 import type { DraftChange } from '../../services/session-service';
 import { StaleRevisionError, StorageError } from '../../storage/errors';
 
@@ -25,7 +25,7 @@ export interface PracticeSessionController {
   readonly saveDraft: (change: DraftChange) => Promise<void>;
   readonly requestHint: () => Promise<HintKey | null>;
   readonly reveal: (reason: 'compare' | 'surrender') => Promise<void>;
-  readonly grade: (grade: Grade) => Promise<void>;
+  readonly grade: (grade: Grade, checkerVerdict?: CheckerVerdict) => Promise<void>;
   readonly flagAmbiguous: () => Promise<void>;
   readonly finishRepair: () => Promise<void>;
   readonly finish: () => Promise<void>;
@@ -227,7 +227,7 @@ export function usePracticeSession(): PracticeSessionController {
   );
 
   const grade = useCallback(
-    (value: Grade): Promise<void> =>
+    (value: Grade, checkerVerdict?: CheckerVerdict): Promise<void> =>
       enqueue(async () => {
         const current = sessionRef.current;
         if (current?.phase.kind !== 'feedback') {
@@ -243,6 +243,7 @@ export function usePracticeSession(): PracticeSessionController {
             expectedRevision: current.revision,
             expectedCardVersion: phase.expectedCardVersion,
             grade: value,
+            checkerVerdict,
           });
           applySession(result.session);
         } catch (failure) {

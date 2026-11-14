@@ -231,6 +231,122 @@ input[type='checkbox'] {
   fill: var(--color-ink);
   stroke: none;
 }
+.drawing-ink--order {
+  fill: #b05a00;
+}
+.drawing-ink--direction {
+  fill: #1c5fa8;
+}
+.drawing-ink--off {
+  fill: #b3261e;
+}
+.drawing-model {
+  fill: none;
+  stroke: #0d9488;
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.8;
+  pointer-events: none;
+}
+.check-verdict {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-left-width: 0.4rem;
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+.check-verdict p {
+  margin: 0;
+}
+.check-verdict p + p {
+  margin-top: var(--space-2);
+}
+.check-verdict--good {
+  border-left-color: var(--color-success);
+}
+.check-verdict--partial {
+  border-left-color: #e0a84a;
+}
+.check-verdict--bad {
+  border-left-color: var(--color-accent);
+}
+.mark-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-muted);
+}
+.mark-legend span {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  margin-right: 0.4em;
+  border-radius: 50%;
+}
+.stroke-order__main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.stroke-order svg {
+  display: block;
+  aspect-ratio: 1;
+  background: var(--color-paper);
+  border-radius: var(--radius);
+}
+.stroke-order__animation {
+  width: min(100%, 20rem);
+}
+.stroke-order__ghost {
+  fill: var(--color-ink);
+  opacity: 0.12;
+}
+.stroke-order__active {
+  fill: #c2410c;
+}
+.stroke-order__labels text {
+  fill: #c2410c;
+  font:
+    700 44px system-ui,
+    sans-serif;
+  text-anchor: middle;
+  dominant-baseline: central;
+  paint-order: stroke;
+  stroke: var(--color-paper);
+  stroke-width: 10px;
+}
+.stroke-order__steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-4) 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+.stroke-order__steps li {
+  text-align: center;
+  color: var(--color-muted);
+}
+.stroke-order__steps svg {
+  width: 100%;
+  border-radius: calc(var(--radius) / 2);
+}
+.stroke-order__earlier {
+  fill: var(--color-ink);
+  opacity: 0.3;
+}
+.stroke-order__current {
+  fill: var(--color-ink);
+}
+.stroke-order__start {
+  fill: #c2410c;
+}
 .drawing-guide {
   fill: none;
   stroke: var(--color-ink);
