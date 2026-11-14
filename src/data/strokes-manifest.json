@@ -59,6 +59,12 @@
       "kanjivg": 14
     }
   ],
+  "shards": {
+    "fileCount": 64,
+    "entryCount": 6703,
+    "strokeTotal": 79921,
+    "sha256": "6105cfe1870739578a8690c1878daa2a23f19ffb67d683d7b00a6213d5b62b8e"
+  },
   "source": {
     "name": "KanjiVG",
     "release": "r20260714",

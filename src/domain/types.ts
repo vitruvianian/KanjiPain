@@ -22,6 +22,59 @@ export interface KanjiEntry {
   readonly curriculumOrder: number;
 }
 
+/**
+ * What practice needs to know about a character, whichever deck it comes from. Every
+ * `KanjiEntry` is one; custom-deck entries leave the dictionary-only fields out.
+ */
+export interface StudyEntry {
+  readonly id: KanjiId;
+  readonly literal: string;
+  readonly meanings: readonly string[];
+  readonly onReadings: readonly string[];
+  readonly kunReadings: readonly string[];
+  /** Null when there is no stroke data for the character. */
+  readonly strokeCount: number | null;
+  readonly curriculumOrder: number;
+  /** Custom decks only: the learner's readings, not split into on and kun. */
+  readonly readings?: readonly string[] | undefined;
+  readonly note?: string | undefined;
+  readonly mnemonic?: string | undefined;
+}
+
+export const STANDARD_DECK_ID = 'standard';
+
+/** Order in which a custom deck introduces new characters. */
+export type DeckOrder = 'imported' | 'stroke-count' | 'shuffled';
+
+export interface DeckRecord {
+  id: string;
+  name: string;
+  kind: 'custom';
+  createdAt: UnixMs;
+  updatedAt: UnixMs;
+  /** Increases with every change to the deck or its entries. */
+  revision: number;
+  order: DeckOrder;
+}
+
+export type StrokeStatus = 'available' | 'unrecognized';
+
+export interface DeckEntryRecord {
+  /** `${deckId}:${kanjiId}` */
+  id: string;
+  deckId: string;
+  kanjiId: KanjiId;
+  literal: string;
+  meanings: string[];
+  readingCues: string[];
+  note?: string | undefined;
+  mnemonic?: string | undefined;
+  position: number;
+  strokeStatus: StrokeStatus;
+  /** From the stroke data; null while the character is unrecognized. */
+  strokeCount: number | null;
+}
+
 export interface CatalogManifest {
   schemaVersion: 1;
   datasetVersion: string;
@@ -60,6 +113,7 @@ export interface SettingsRecord {
   dailyNewLimit: number;
   inputMode: InputMode;
   onboardingCompleted: boolean;
+  activeDeckId: string;
 }
 
 export interface CardRecord {

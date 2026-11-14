@@ -14,6 +14,8 @@ export interface SearchableKanji {
   readonly meanings: readonly string[];
   readonly onReadings: readonly string[];
   readonly kunReadings: readonly string[];
+  /** Custom-deck readings, not split into on and kun. */
+  readonly readings?: readonly string[] | undefined;
 }
 
 function normalizeKatakana(character: string): string {
@@ -44,7 +46,7 @@ function matchesQuery(entry: SearchableKanji, query: string, lowerQuery: string)
   }
 
   const normalizedQuery = normalizeKana(query);
-  return [...entry.onReadings, ...entry.kunReadings].some((reading) =>
+  return [...entry.onReadings, ...entry.kunReadings, ...(entry.readings ?? [])].some((reading) =>
     normalizeKana(reading).includes(normalizedQuery),
   );
 }

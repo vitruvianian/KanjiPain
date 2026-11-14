@@ -61,6 +61,8 @@ describe('StrokeOrder', () => {
   it('says so when a character has no stroke data', async () => {
     reduceMotion(true);
     render(<StrokeOrder kanjiId="k-0000" literal="?" />);
-    expect(await screen.findByText(/stroke order for this character is unavailable/)).toBeVisible();
+    expect(
+      await screen.findByText(/Not recognized: stroke order and automatic checking are not/),
+    ).toBeVisible();
   });
 });

@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
 import { serializedFsrsCardSchema, serializedFsrsLogSchema } from '../scheduler/serialization';
+import { kanjiIdFromLiteral } from './ids';
+import { STANDARD_DECK_ID } from './types';
 
 const nonBlankStringSchema = z.string().trim().min(1);
 const recordIdSchema = nonBlankStringSchema;
@@ -105,7 +107,63 @@ export const settingsRecordSchema = z.strictObject({
   dailyNewLimit: z.number().int().min(0).max(10),
   inputMode: inputModeSchema,
   onboardingCompleted: z.boolean(),
+  // Absent in settings saved, or backed up, before decks existed.
+  activeDeckId: nonBlankStringSchema.default(STANDARD_DECK_ID),
 });
+
+export const DECK_NAME_MAX = 80;
+const deckTextSchema = nonBlankStringSchema.max(200);
+const singleCodePointSchema = z.string().refine((literal) => Array.from(literal).length === 1, {
+  message: 'A deck entry holds exactly one character.',
+});
+
+export const deckOrderSchema = z.enum(['imported', 'stroke-count', 'shuffled']);
+
+export const deckRecordSchema = z.strictObject({
+  id: recordIdSchema.refine((id) => id !== STANDARD_DECK_ID, {
+    message: 'The Standard deck is not stored.',
+  }),
+  name: nonBlankStringSchema.max(DECK_NAME_MAX),
+  kind: z.literal('custom'),
+  createdAt: unixMsSchema,
+  updatedAt: unixMsSchema,
+  revision: nonNegativeIntegerSchema,
+  order: deckOrderSchema,
+});
+
+export const deckEntryRecordSchema = z
+  .strictObject({
+    id: recordIdSchema,
+    deckId: recordIdSchema,
+    kanjiId: kanjiIdSchema,
+    literal: singleCodePointSchema,
+    meanings: z.array(deckTextSchema).max(20),
+    readingCues: z.array(deckTextSchema).max(20),
+    note: nonBlankStringSchema.max(2_000).optional(),
+    mnemonic: nonBlankStringSchema.max(2_000).optional(),
+    position: nonNegativeIntegerSchema,
+    strokeStatus: z.enum(['available', 'unrecognized']),
+    strokeCount: positiveIntegerSchema.nullable(),
+  })
+  .superRefine((entry, context) => {
+    if (entry.id !== `${entry.deckId}:${entry.kanjiId}`) {
+      context.addIssue({ code: 'custom', path: ['id'], message: 'Entry ID does not match.' });
+    }
+    if (entry.kanjiId !== kanjiIdFromLiteral(entry.literal)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['kanjiId'],
+        message: 'Entry kanji ID does not match its character.',
+      });
+    }
+    if ((entry.strokeStatus === 'available') !== (entry.strokeCount !== null)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['strokeCount'],
+        message: 'Only characters with stroke data have a stroke count.',
+      });
+    }
+  });
 
 export const cardRecordSchema = z.strictObject({
   id: nonBlankStringSchema,
@@ -174,8 +232,8 @@ export const revealedAttemptDraftSchema = z.strictObject({
 
 export const productionPromptSchema = z.strictObject({
   kanjiId: kanjiIdSchema,
-  meaningCue: nonBlankStringSchema,
-  readingCues: z.array(nonBlankStringSchema).min(1),
+  meaningCue: z.string(),
+  readingCues: z.array(nonBlankStringSchema),
   hints: z.array(
     z.strictObject({
       key: z.enum(['mnemonic', 'component', 'stroke-count']),
@@ -323,6 +381,8 @@ export const sessionRecordSchema = z
     phase: sessionPhaseSchema,
     completedEventIds: z.array(recordIdSchema).max(60),
     mode: z.enum(['extra-new', 'review-ahead']).optional(),
+    deckId: recordIdSchema.optional(),
+    deckRevision: nonNegativeIntegerSchema.optional(),
   })
   .superRefine((session, context) => {
     const isFinished = session.status !== 'active';

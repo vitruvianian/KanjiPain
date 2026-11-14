@@ -536,7 +536,7 @@ its own table. A session is small (maximum sixty exercises). Strokes are retaine
 only in the active draft, cleared on advancing to the next exercise, and omitted
 from history/backups. Version 1 does not provide a handwriting gallery.
 
-### IndexedDB tables (database `kanjipain`, version 1)
+### IndexedDB tables (database `kanjipain`, version 2)
 
 | Table           | Primary key and useful indexes                                   |
 | --------------- | ---------------------------------------------------------------- |
@@ -546,12 +546,36 @@ from history/backups. Version 1 does not provide a handwriting gallery.
 | `settings`      | singleton `id = 'user'`                                          |
 | `contentIssues` | `id`, `cardId`, `createdAt`                                      |
 | `meta`          | singleton/versioned keys for app and backup metadata             |
+| `decks`         | `id` (custom decks only; the Standard deck is never stored)      |
+| `deckEntries`   | `id` = `deckId:kanjiId`, `deckId`, `kanjiId`                     |
 
 Do not index booleans in IndexedDB. Filter `suspended` in memory after querying the
 small due set. There is at most one active session, enforced by reading/creating
 sessions inside one read-write transaction on the sessions table.
 
-Settings: `dailyNewLimit` (integer 0..10), `inputMode`, `onboardingCompleted`.
+Version 2 added the two deck tables and `settings.activeDeckId`; the upgrade leaves
+cards, events and sessions untouched.
+
+### Decks
+
+- The Standard deck is the bundled catalog under the fixed ID `standard`. It is not a
+  row, so nothing can edit it; `DeckService` also rejects every mutation aimed at it.
+- A custom deck is a `decks` row plus one `deckEntries` row per character (`literal`,
+  `meanings`, `readingCues`, optional `note`/`mnemonic`, `position`, `strokeStatus`,
+  `strokeCount`).
+- **One card per character, shared across decks.** A deck decides which cards a session
+  uses and what the prompt says. `DeckContent` (`src/services/deck-content.ts`) is the
+  single answer to "entry for this character in this deck"; sessions, prompts, the Dojo
+  and the Collection read it instead of the catalog. `planSession` ignores cards outside
+  the deck and entries with no cue.
+- Sessions store `deckId`/`deckRevision` (absent for Standard) and keep that deck until
+  they end. A deck with an active session cannot be edited or deleted.
+- Stroke data for all KanjiVG characters ships as 64 lazily loaded shards
+  (`src/data/stroke-shards/`, keyed by code point modulo 64). The Jōyō file is unchanged,
+  so the default experience downloads nothing extra. A character with no stroke data is
+  `unrecognized`: no guide, no check, no `checkerVerdict`.
+
+Settings: `dailyNewLimit` (integer 0..10), `inputMode`, `onboardingCompleted`, `activeDeckId`.
 No user identity or timezone service is required. Timezone changes follow the
 device's new local day; introduction caps are a convenience, not an anti-abuse rule.
 
@@ -681,11 +705,14 @@ before its transaction commits.
 
 ## 10. Backup, updates, and errors
 
-### Backup format v1
+### Backup format v2
 
-JSON envelope: `format: 'kanjipain-backup'`, `version: 1`, export timestamp,
+JSON envelope: `format: 'kanjipain-backup'`, `version: 2`, export timestamp,
 dataset version, scheduler adapter metadata, cards, events, completed/ended
-sessions, settings, and content issues. Do not duplicate the static catalog.
+sessions, settings, content issues, custom `decks` and `deckEntries`. Do not
+duplicate the static catalog. Version 1 files (no decks) still import. Cards are not
+required to belong to a deck: deleting a deck leaves its cards, and such a backup
+must stay importable. The preview reports how many cards are outside every deck.
 
 - Export/import is enabled only when there is no active session. Link to resume or
   finish it. This makes restore semantics explicit and avoids partial attempts.
@@ -693,7 +720,7 @@ sessions, settings, and content issues. Do not duplicate the static catalog.
 - Import is **replace**, not merge. Validate the complete file before any writes.
 - Check IDs, references, timestamps, enums, unique event IDs, compatible scheduler
   metadata, card states, session statuses, and catalog membership.
-- Reject unsupported versions, unknown kanji IDs, malformed data, and files larger
+- Reject unsupported versions, malformed kanji IDs or deck entries, malformed data, and files larger
   than 25 MiB with a useful message. No partial imports.
 - Show a preview of counts and request confirmation to replace current progress;
   offer export of current progress first. Replace all user tables in one transaction.

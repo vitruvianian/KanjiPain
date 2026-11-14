@@ -1,6 +1,10 @@
 import { kanjiIdFromLiteral } from '../src/domain/ids';
 import type { KanjiEntry } from '../src/domain/types';
-import { REFERENCE_GRID, type ReferenceStrokeData } from '../src/recognition/reference-data';
+import {
+  REFERENCE_GRID,
+  strokeShardKey,
+  type ReferenceStrokeData,
+} from '../src/recognition/reference-data';
 
 export const KANJIVG_RELEASE = 'r20260714';
 export const KANJIVG_DOWNLOAD_URL = `https://github.com/KanjiVG/kanjivg/releases/download/${KANJIVG_RELEASE}/kanjivg-20260714.xml.gz`;
@@ -278,4 +282,42 @@ export function buildReferenceStrokes(
     throw new Error(`KanjiVG has no stroke data for: ${missing.join(' ')}`);
   }
   return { data, strokeTotal, strokeCountDifferences };
+}
+
+export interface StrokeShardBuild {
+  /** Shard key to that shard's characters, both in sorted order. */
+  readonly shards: ReadonlyMap<string, ReferenceStrokeData>;
+  readonly entryCount: number;
+  readonly strokeTotal: number;
+}
+
+/**
+ * Builds reference strokes for every character in KanjiVG, split into shard files so custom
+ * decks can fetch stroke order for characters outside the bundled catalog.
+ */
+export function buildStrokeShards(xml: string): StrokeShardBuild {
+  const grouped = new Map<string, [string, string[]][]>();
+  let entryCount = 0;
+  let strokeTotal = 0;
+
+  for (const [codePoint, paths] of parseKanjivgXml(xml)) {
+    if (paths.length === 0) continue;
+    const id = kanjiIdFromLiteral(String.fromCodePoint(Number.parseInt(codePoint, 16)));
+    const key = strokeShardKey(id);
+    const group = grouped.get(key) ?? [];
+    group.push([id, paths.map(encodeStroke)]);
+    grouped.set(key, group);
+    entryCount += 1;
+    strokeTotal += paths.length;
+  }
+
+  const shards = new Map(
+    [...grouped.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, group]) => [
+        key,
+        Object.fromEntries(group.sort(([left], [right]) => left.localeCompare(right))),
+      ]),
+  );
+  return { shards, entryCount, strokeTotal };
 }

@@ -2,6 +2,7 @@ import { createContext } from 'react';
 
 import type { BackupService } from '../services/backup-service';
 import type { CatalogRepository } from '../services/catalog';
+import type { DeckService } from '../services/deck-service';
 import type { ContentIssueService } from '../services/content-issue-service';
 import type { ReviewService } from '../services/review-service';
 import type { SessionService } from '../services/session-service';
@@ -15,6 +16,7 @@ export interface AppServices {
   readonly sessions: SessionService;
   readonly reviews: ReviewService;
   readonly contentIssues: ContentIssueService;
+  readonly decks: DeckService;
   readonly settings: SettingsService;
 }
 

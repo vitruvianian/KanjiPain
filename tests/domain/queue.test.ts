@@ -9,6 +9,7 @@ const settings: SettingsRecord = {
   dailyNewLimit: 5,
   inputMode: 'drawing',
   onboardingCompleted: true,
+  activeDeckId: 'standard',
 };
 
 describe('planSession extra modes', () => {

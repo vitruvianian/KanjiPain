@@ -111,4 +111,69 @@ describe('FeedbackPanel handwriting check', () => {
     await user.click(screen.getByRole('button', { name: 'Got it' }));
     expect(onGrade).toHaveBeenCalledExactlyOnceWith('got', undefined);
   });
+
+  it('warns and leaves grading to the learner when the character has no stroke data', async () => {
+    const user = userEvent.setup();
+    const onGrade = vi.fn();
+    render(
+      <FeedbackPanel
+        phase={phase(horizontal)}
+        entry={{
+          id: 'k-2603',
+          literal: '☃',
+          meanings: ['snowman'],
+          onReadings: [],
+          kunReadings: [],
+          readings: [],
+          strokeCount: null,
+          curriculumOrder: 0,
+        }}
+        busy={false}
+        literalOf={() => undefined}
+        onGrade={onGrade}
+        onFlagAmbiguous={vi.fn()}
+      />,
+    );
+
+    expect(
+      await screen.findByText(/Not recognized: stroke order and automatic checking/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/The app cannot judge this attempt/)).toBeInTheDocument();
+    expect(screen.queryByText(/Suggested grade/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('checkbox', { name: /Show the correct strokes/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('model-strokes')).not.toBeInTheDocument();
+
+    // No verdict is recorded, so statistics keep these attempts apart from checked ones.
+    await user.click(screen.getByRole('button', { name: 'Got it' }));
+    expect(onGrade).toHaveBeenCalledExactlyOnceWith('got', undefined);
+  });
+
+  it('checks a custom-deck character against stroke data outside the Jōyō set', async () => {
+    render(
+      <FeedbackPanel
+        phase={phase(vertical)}
+        entry={{
+          id: 'k-9df2',
+          literal: '鷲',
+          meanings: ['eagle'],
+          onReadings: [],
+          kunReadings: [],
+          readings: ['わし'],
+          strokeCount: 23,
+          curriculumOrder: 0,
+        }}
+        busy={false}
+        extraReferenceIds={['k-9df2']}
+        literalOf={() => undefined}
+        onGrade={vi.fn()}
+        onFlagAmbiguous={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText('The stroke count is off.')).toBeInTheDocument();
+    expect(screen.getByText(/鷲 has 23/)).toBeInTheDocument();
+    expect(screen.queryByText(/Not recognized/)).not.toBeInTheDocument();
+  });
 });

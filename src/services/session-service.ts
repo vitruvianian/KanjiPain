@@ -10,8 +10,12 @@ import type {
   SessionMode,
   SessionRecord,
 } from '../domain/session-types';
-import { sessionRecordSchema, unrevealedAttemptDraftSchema } from '../domain/schemas';
-import type { InputMode, Stroke, UnrevealedAttemptDraft } from '../domain/types';
+import {
+  sessionRecordSchema,
+  settingsRecordSchema,
+  unrevealedAttemptDraftSchema,
+} from '../domain/schemas';
+import type { InputMode, SettingsRecord, Stroke, UnrevealedAttemptDraft } from '../domain/types';
 import type { SchedulerAdapter } from '../scheduler/types';
 import type { KanjiPainDatabase } from '../storage/database';
 import {
@@ -22,6 +26,7 @@ import {
 } from '../storage/errors';
 import type { StorageRepositories } from '../storage/repositories';
 import type { CatalogRepository } from './catalog';
+import { loadDeckContent, standardDeckContent } from './deck-content';
 import { DraftSaveQueue } from './draft-save-queue';
 
 export class SessionNotFoundError extends Error {
@@ -70,6 +75,14 @@ function parseSession(value: unknown): SessionRecord {
   const result = sessionRecordSchema.safeParse(value);
   if (!result.success) {
     throw new InvalidPersistedDataError('session', result.error);
+  }
+  return result.data;
+}
+
+function parseSettings(value: unknown): SettingsRecord {
+  const result = settingsRecordSchema.safeParse(value);
+  if (!result.success) {
+    throw new InvalidPersistedDataError('settings', result.error);
   }
   return result.data;
 }
@@ -166,6 +179,8 @@ export class SessionService {
         this.#database.sessions,
         this.#database.cards,
         this.#database.settings,
+        this.#database.decks,
+        this.#database.deckEntries,
         async () => {
           const activeRows = await this.#database.sessions
             .where('status')
@@ -178,7 +193,10 @@ export class SessionService {
           const activeRow = activeRows[0];
           if (activeRow !== undefined) {
             const active = parseSession(activeRow);
-            if (active.datasetVersion === this.#catalog.manifest.datasetVersion) {
+            // A session keeps the deck it started with, even if another deck is active now.
+            const deckExists =
+              (await loadDeckContent(this.#database, this.#catalog, active.deckId)) !== undefined;
+            if (active.datasetVersion === this.#catalog.manifest.datasetVersion && deckExists) {
               return active;
             }
             const obsolete = reduceSession(active, {
@@ -188,10 +206,10 @@ export class SessionService {
             await this.#database.sessions.put(obsolete);
           }
 
-          const settings = await this.#database.settings.get('user');
-          if (settings === undefined) {
-            throw new InvalidPersistedDataError('settings');
-          }
+          const settings = parseSettings(await this.#database.settings.get('user'));
+          const content =
+            (await loadDeckContent(this.#database, this.#catalog, settings.activeDeckId)) ??
+            standardDeckContent(this.#catalog);
           const cards = await this.#database.cards.toArray();
           const day = localDayKey(now);
           const introducedToday = await this.#database.cards
@@ -200,7 +218,7 @@ export class SessionService {
             .count();
           const plan = planSession({
             cards,
-            catalog: this.#catalog.all,
+            catalog: content.practicable,
             settings,
             introducedToday,
             now,
@@ -220,6 +238,9 @@ export class SessionService {
             phase: { kind: 'selecting' },
             completedEventIds: [],
             ...(mode === 'regular' ? {} : { mode }),
+            ...(content.deck.kind === 'standard'
+              ? {}
+              : { deckId: content.deck.id, deckRevision: content.deck.revision }),
           };
           if (created.primaryItems.length === 0) {
             created = reduceSession(created, { type: 'complete', endedAt: now });
@@ -462,6 +483,8 @@ export class SessionService {
           'rw',
           this.#database.sessions,
           this.#database.cards,
+          this.#database.decks,
+          this.#database.deckEntries,
           async () => {
             const row = await this.#database.sessions.get(sessionId);
             if (row === undefined) {
@@ -474,11 +497,12 @@ export class SessionService {
             }
             const promptPhase = session.phase;
             const card = await this.#database.cards.get(promptPhase.cardId);
-            const entry = card === undefined ? undefined : this.#catalog.byId(card.kanjiId);
-            if (card === undefined || entry === undefined) {
+            const content = await loadDeckContent(this.#database, this.#catalog, session.deckId);
+            const entry = card === undefined ? undefined : content?.byId(card.kanjiId);
+            if (card === undefined || content === undefined || entry === undefined) {
               throw new InvalidPersistedDataError('prompt card');
             }
-            const prompt = buildPrompt(entry, this.#catalog.teachingNotes[entry.id]);
+            const prompt = buildPrompt(entry, content.noteFor(entry.id));
             const available = [...prompt.hints.map((hint) => hint.key), 'full-answer' as const];
             const hintKey = available.find(
               (candidate) => !promptPhase.draft.hintKeysUsed.includes(candidate),

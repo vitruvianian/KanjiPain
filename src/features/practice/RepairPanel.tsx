@@ -4,12 +4,12 @@ import { Button } from '../../components/Button';
 import { DrawingPad } from '../../components/DrawingPad';
 import { StrokeOrder } from '../../components/StrokeOrder';
 import type { RepairPhase } from '../../domain/session-types';
-import type { KanjiEntry, Stroke } from '../../domain/types';
+import type { Stroke, StudyEntry } from '../../domain/types';
 import type { DraftChange } from '../../services/session-service';
 
 interface RepairPanelProps {
   readonly phase: RepairPhase;
-  readonly entry: KanjiEntry;
+  readonly entry: StudyEntry;
   readonly busy: boolean;
   readonly onSaveDraft: (change: DraftChange) => void;
   readonly onFinishRepair: () => void;
@@ -17,6 +17,7 @@ interface RepairPanelProps {
 
 export function RepairPanel({ phase, entry, busy, onSaveDraft, onFinishRepair }: RepairPanelProps) {
   const [strokes, setStrokes] = useState<Stroke[]>(phase.practiceStrokes);
+  const readings = entry.readings ?? entry.onReadings;
 
   return (
     <section className="exercise-panel" aria-labelledby="repair-title">
@@ -55,7 +56,9 @@ export function RepairPanel({ phase, entry, busy, onSaveDraft, onFinishRepair }:
             {entry.literal}
           </p>
           <p>
-            {entry.meanings.join(', ')} · <span lang="ja">{entry.onReadings.join('・')}</span>
+            {entry.meanings.join(', ')}
+            {entry.meanings.length > 0 && readings.length > 0 ? ' · ' : null}
+            <span lang="ja">{readings.join('・')}</span>
           </p>
           <StrokeOrder key={entry.id} kanjiId={entry.id} literal={entry.literal} />
           <Button

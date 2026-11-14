@@ -1,14 +1,16 @@
 import type { Clock } from '../domain/clock';
-import type { SettingsRecord, UnixMs } from '../domain/types';
+import { MAX_DECK_ENTRIES, MAX_DECKS } from '../domain/deck-import';
+import { STANDARD_DECK_ID, type SettingsRecord, type UnixMs } from '../domain/types';
 import type { CatalogRepository } from './catalog';
 import type { KanjiPainDatabase } from '../storage/database';
 import {
   BACKUP_FORMAT,
   BACKUP_VERSION,
   backupEnvelopeSchema,
+  backupEnvelopeV1Schema,
   countBackupRecords,
   type BackupCounts,
-  type BackupEnvelopeV1,
+  type BackupEnvelope,
 } from '../storage/backup-schema';
 import { InvalidPersistedDataError, mapStorageError } from '../storage/errors';
 
@@ -45,6 +47,10 @@ export interface BackupPreview {
   readonly datasetVersionMatches: boolean;
   readonly counts: BackupCounts;
   readonly settings: SettingsRecord;
+  /** The file's format version. Version 1 files hold no custom decks. */
+  readonly version: number;
+  /** Cards for characters that are in neither the Standard deck nor a deck in the backup. */
+  readonly cardsOutsideDecks: number;
 }
 
 export interface BackupServiceDependencies {
@@ -61,17 +67,46 @@ function invalid(message: string): never {
   throw new BackupValidationError(message);
 }
 
-function validateReferences(envelope: BackupEnvelopeV1, catalog: CatalogRepository): void {
-  const cards = new Map<string, BackupEnvelopeV1['cards'][number]>();
+function validateDecks(envelope: BackupEnvelope): void {
+  if (envelope.decks.length > MAX_DECKS) {
+    invalid(`The backup contains more than ${String(MAX_DECKS)} custom decks.`);
+  }
+  const entryCounts = new Map<string, number>();
+  for (const deck of envelope.decks) {
+    if (entryCounts.has(deck.id)) {
+      invalid(`The backup contains duplicate deck ID ${deck.id}.`);
+    }
+    entryCounts.set(deck.id, 0);
+  }
+  const entryIds = new Set<string>();
+  for (const entry of envelope.deckEntries) {
+    const count = entryCounts.get(entry.deckId);
+    if (count === undefined) {
+      invalid(`Deck entry ${entry.id} refers to a missing deck.`);
+    }
+    if (entryIds.has(entry.id)) {
+      invalid(`The backup contains duplicate deck entry ID ${entry.id}.`);
+    }
+    if ([...entry.meanings, ...entry.readingCues].some((cue) => cue.includes(entry.literal))) {
+      invalid(`Deck entry ${entry.id} has a cue that contains its own character.`);
+    }
+    if (count >= MAX_DECK_ENTRIES) {
+      invalid(`Deck ${entry.deckId} holds more than ${String(MAX_DECK_ENTRIES)} characters.`);
+    }
+    entryIds.add(entry.id);
+    entryCounts.set(entry.deckId, count + 1);
+  }
+}
+
+function validateReferences(envelope: BackupEnvelope): void {
+  validateDecks(envelope);
+  const cards = new Map<string, BackupEnvelope['cards'][number]>();
   for (const card of envelope.cards) {
     if (cards.has(card.id)) {
       invalid(`The backup contains duplicate card ID ${card.id}.`);
     }
     if (card.id !== `${card.kanjiId}:production`) {
       invalid(`Card ${card.id} does not match its kanji ID.`);
-    }
-    if (catalog.byId(card.kanjiId) === undefined) {
-      invalid(`Card ${card.id} refers to a character outside the current catalog.`);
     }
     if (String(card.schedulerState.card.cardId) !== card.id) {
       invalid(`Card ${card.id} contains scheduler state for a different card.`);
@@ -82,7 +117,7 @@ function validateReferences(envelope: BackupEnvelopeV1, catalog: CatalogReposito
     cards.set(card.id, card);
   }
 
-  const sessions = new Map<string, BackupEnvelopeV1['sessions'][number]>();
+  const sessions = new Map<string, BackupEnvelope['sessions'][number]>();
   for (const session of envelope.sessions) {
     if (sessions.has(session.id)) {
       invalid(`The backup contains duplicate session ID ${session.id}.`);
@@ -125,7 +160,7 @@ function validateReferences(envelope: BackupEnvelopeV1, catalog: CatalogReposito
     sessions.set(session.id, session);
   }
 
-  const events = new Map<string, BackupEnvelopeV1['events'][number]>();
+  const events = new Map<string, BackupEnvelope['events'][number]>();
   for (const event of envelope.events) {
     if (events.has(event.id)) {
       invalid(`The backup contains duplicate review event ID ${event.id}.`);
@@ -221,9 +256,9 @@ function assertHeader(value: unknown): void {
   if (value.format !== BACKUP_FORMAT) {
     invalid('This file is not a KanjiPain backup.');
   }
-  if (value.version !== BACKUP_VERSION) {
+  if (value.version !== 1 && value.version !== BACKUP_VERSION) {
     invalid(
-      `Backup version ${String(value.version)} is not supported. This app can import version 1 only.`,
+      `Backup version ${String(value.version)} is not supported. This app can import versions 1 and ${String(BACKUP_VERSION)}.`,
     );
   }
   if (!isRecord(value.scheduler)) {
@@ -241,7 +276,7 @@ function assertHeader(value: unknown): void {
 }
 
 interface ParsedBackup {
-  readonly envelope: BackupEnvelopeV1;
+  readonly envelope: BackupEnvelope;
   readonly preview: BackupPreview;
 }
 
@@ -256,15 +291,19 @@ export class BackupService {
     this.#clock = clock;
   }
 
-  async createExport(): Promise<BackupEnvelopeV1> {
+  async createExport(): Promise<BackupEnvelope> {
     try {
       return await this.#database.transaction(
         'r',
-        this.#database.cards,
-        this.#database.events,
-        this.#database.sessions,
-        this.#database.settings,
-        this.#database.contentIssues,
+        [
+          this.#database.cards,
+          this.#database.events,
+          this.#database.sessions,
+          this.#database.settings,
+          this.#database.contentIssues,
+          this.#database.decks,
+          this.#database.deckEntries,
+        ],
         async () => {
           const active = await this.#database.sessions.where('status').equals('active').first();
           if (active !== undefined) {
@@ -280,6 +319,8 @@ export class BackupService {
             (session) => session.status !== 'active',
           );
           const contentIssues = await this.#database.contentIssues.toArray();
+          const decks = await this.#database.decks.toArray();
+          const deckEntries = await this.#database.deckEntries.toArray();
 
           const result = backupEnvelopeSchema.safeParse({
             format: BACKUP_FORMAT,
@@ -302,6 +343,13 @@ export class BackupService {
             settings,
             contentIssues: [...contentIssues].sort(
               (left, right) => left.createdAt - right.createdAt || left.id.localeCompare(right.id),
+            ),
+            decks: [...decks].sort((left, right) => left.id.localeCompare(right.id)),
+            deckEntries: [...deckEntries].sort(
+              (left, right) =>
+                left.deckId.localeCompare(right.deckId) ||
+                left.position - right.position ||
+                left.id.localeCompare(right.id),
             ),
           });
           if (!result.success) {
@@ -349,17 +397,25 @@ export class BackupService {
     try {
       return await this.#database.transaction(
         'rw',
-        this.#database.cards,
-        this.#database.events,
-        this.#database.sessions,
-        this.#database.settings,
-        this.#database.contentIssues,
+        [
+          this.#database.cards,
+          this.#database.events,
+          this.#database.sessions,
+          this.#database.settings,
+          this.#database.contentIssues,
+          this.#database.decks,
+          this.#database.deckEntries,
+        ],
         async () => {
           const active = await this.#database.sessions.where('status').equals('active').first();
           if (active !== undefined) {
             throw new BackupActiveSessionError(active.id);
           }
 
+          // Custom decks are replaced along with progress. The Standard deck is not stored,
+          // so no backup can change it.
+          await this.#database.decks.clear();
+          await this.#database.deckEntries.clear();
           await this.#database.cards.clear();
           await this.#database.events.clear();
           await this.#database.sessions.clear();
@@ -378,6 +434,12 @@ export class BackupService {
           }
           if (parsed.envelope.contentIssues.length > 0) {
             await this.#database.contentIssues.bulkAdd([...parsed.envelope.contentIssues]);
+          }
+          if (parsed.envelope.decks.length > 0) {
+            await this.#database.decks.bulkAdd([...parsed.envelope.decks]);
+          }
+          if (parsed.envelope.deckEntries.length > 0) {
+            await this.#database.deckEntries.bulkAdd([...parsed.envelope.deckEntries]);
           }
           return parsed.preview;
         },
@@ -400,7 +462,10 @@ export class BackupService {
   #parseAndValidate(text: string): ParsedBackup {
     const value = parseBackupText(text);
     assertHeader(value);
-    const result = backupEnvelopeSchema.safeParse(value);
+    const isVersion1 = isRecord(value) && value.version === 1;
+    const result = isVersion1
+      ? backupEnvelopeV1Schema.safeParse(value)
+      : backupEnvelopeSchema.safeParse(value);
     if (!result.success) {
       const issue = result.error.issues[0];
       const location = issue === undefined ? '' : issue.path.join('.');
@@ -410,15 +475,32 @@ export class BackupService {
           : `The backup is malformed${location === '' ? '' : ` at ${location}`}: ${issue.message}`,
       );
     }
-    validateReferences(result.data, this.#catalog);
+    // A version 1 backup is a version 2 backup without custom decks.
+    const data: BackupEnvelope =
+      result.data.version === 1
+        ? { ...result.data, version: BACKUP_VERSION, decks: [], deckEntries: [] }
+        : result.data;
+    validateReferences(data);
+    const deckIds = new Set(data.decks.map((deck) => deck.id));
+    const deckKanjiIds = new Set(data.deckEntries.map((entry) => entry.kanjiId));
+    // An active deck that is not in the backup cannot be restored; practice falls back.
+    const settings = deckIds.has(data.settings.activeDeckId)
+      ? data.settings
+      : { ...data.settings, activeDeckId: STANDARD_DECK_ID };
+    const envelope = { ...data, settings };
     return {
-      envelope: result.data,
+      envelope,
       preview: Object.freeze({
-        exportedAt: result.data.exportedAt,
-        datasetVersion: result.data.datasetVersion,
-        datasetVersionMatches: result.data.datasetVersion === this.#catalog.manifest.datasetVersion,
-        counts: countBackupRecords(result.data),
-        settings: Object.freeze({ ...result.data.settings }),
+        exportedAt: envelope.exportedAt,
+        datasetVersion: envelope.datasetVersion,
+        datasetVersionMatches: envelope.datasetVersion === this.#catalog.manifest.datasetVersion,
+        counts: countBackupRecords(envelope),
+        settings: Object.freeze({ ...settings }),
+        version: isVersion1 ? 1 : BACKUP_VERSION,
+        cardsOutsideDecks: envelope.cards.filter(
+          (card) =>
+            this.#catalog.byId(card.kanjiId) === undefined && !deckKanjiIds.has(card.kanjiId),
+        ).length,
       }),
     };
   }

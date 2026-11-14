@@ -43,6 +43,10 @@ export function ImportPreview({
           <dd>{String(preview.counts.contentIssues)}</dd>
         </div>
         <div>
+          <dt>Custom decks</dt>
+          <dd>{String(preview.counts.decks)}</dd>
+        </div>
+        <div>
           <dt>Daily new limit</dt>
           <dd>{String(preview.settings.dailyNewLimit)}</dd>
         </div>
@@ -56,12 +60,25 @@ export function ImportPreview({
         <span className="muted">Dataset version:</span>{' '}
         <code className="hash">{preview.datasetVersion}</code>
       </p>
+      {preview.version === 1 ? (
+        <p className="muted">
+          This backup was made before custom decks existed. It restores progress in the Standard
+          deck; any custom decks you have now are removed with the rest of the current data.
+        </p>
+      ) : null}
+      {preview.cardsOutsideDecks === 0 ? null : (
+        <p className="muted">
+          {String(preview.cardsOutsideDecks)}{' '}
+          {preview.cardsOutsideDecks === 1 ? 'card is for a character' : 'cards are for characters'}{' '}
+          no longer in any deck. Their progress is restored and listed in the Collection under
+          &ldquo;Characters not in any deck&rdquo;.
+        </p>
+      )}
       {preview.datasetVersionMatches ? null : (
         <div className="banner banner--notice">
           <p>
-            This backup was created with a different catalog version. It is accepted because every
-            recorded character exists in the current catalog. Each record keeps its original dataset
-            metadata.
+            This backup was created with a different catalog version. It is accepted because
+            progress is stored per character. Each record keeps its original dataset metadata.
           </p>
         </div>
       )}
@@ -69,7 +86,8 @@ export function ImportPreview({
       <div className="banner banner--error">
         <p>
           <strong>
-            This replaces your current cards, schedules, history, settings, and issues.
+            This replaces your current cards, schedules, history, settings, issues, and custom
+            decks.
           </strong>{' '}
           Export current progress first if you may need it.
         </p>

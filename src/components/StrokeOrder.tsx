@@ -5,6 +5,7 @@ import { resample } from '../recognition/geometry';
 import { useReferenceStrokes } from '../recognition/useReferenceStrokes';
 import { VIEW_SIZE, strokeOutlinePath } from './brush';
 import { Button } from './Button';
+import { UnrecognizedWarning } from './UnrecognizedWarning';
 
 interface StrokeOrderProps {
   readonly kanjiId: KanjiId;
@@ -57,7 +58,9 @@ function Guide() {
  * its starting point, and a step-by-step chart that adds one stroke per frame.
  */
 export function StrokeOrder({ kanjiId, literal }: StrokeOrderProps) {
-  const references = useReferenceStrokes();
+  // The character may come from a custom deck, outside the bundled Jōyō stroke data.
+  const extraIds = useMemo(() => [kanjiId], [kanjiId]);
+  const references = useReferenceStrokes(extraIds);
   const strokes = useMemo<Stroke[] | null>(() => {
     if (typeof references !== 'object') return null;
     const reference = references.strokesFor(kanjiId);
@@ -102,8 +105,11 @@ export function StrokeOrder({ kanjiId, literal }: StrokeOrderProps) {
       </p>
     );
   }
+  if (references === 'unavailable') {
+    return <p className="muted">The stroke order could not be loaded. Reload to try again.</p>;
+  }
   if (strokes === null) {
-    return <p className="muted">The stroke order for this character is unavailable.</p>;
+    return <UnrecognizedWarning />;
   }
 
   const shown = Math.min(count, progress);

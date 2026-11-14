@@ -1,12 +1,21 @@
 import { useDeferredValue, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { useAllCards, useAllEvents, useAppServices } from '../../app/useAppServices';
+import {
+  useActiveDeck,
+  useAllCards,
+  useAllEvents,
+  useAppServices,
+  useCustomKanjiIds,
+  useDeckContent,
+  useDecks,
+} from '../../app/useAppServices';
 import { useNow } from '../../app/useNow';
 import { Button } from '../../components/Button';
+import { literalFromKanjiId } from '../../domain/ids';
 import { deriveCharacterStatus } from '../../domain/status';
 import type { CharacterStatus } from '../../domain/session-types';
-import type { CardRecord, KanjiEntry, ReviewEvent, UnixMs } from '../../domain/types';
+import type { CardRecord, ReviewEvent, StudyEntry, UnixMs } from '../../domain/types';
 import {
   characterStatusLabel,
   collectionFilterLabel,
@@ -18,9 +27,11 @@ import {
 import { searchEntries } from './search';
 
 export const COLLECTION_PAGE_SIZE = 120;
+/** Deck-filter value for characters that have a card but are in no deck any more. */
+const NO_DECK = 'no-deck';
 
 interface CollectionItem {
-  readonly entry: KanjiEntry;
+  readonly entry: StudyEntry;
   readonly status: CharacterStatus;
 }
 
@@ -38,7 +49,7 @@ function groupEventsByCard(events: readonly ReviewEvent[]): Map<string, ReviewEv
 }
 
 function statusFor(
-  entry: KanjiEntry,
+  entry: StudyEntry,
   cardsByKanjiId: ReadonlyMap<string, CardRecord>,
   eventsByCardId: ReadonlyMap<string, readonly ReviewEvent[]>,
   now: UnixMs,
@@ -63,13 +74,27 @@ export function CollectionPage() {
   const { catalog } = useAppServices();
   const cards = useAllCards();
   const events = useAllEvents();
+  const decks = useDecks();
+  const activeDeck = useActiveDeck();
+  const customKanjiIds = useCustomKanjiIds();
   const now = useNow();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<CollectionFilter>('all');
+  // Null follows the active deck until the learner picks another one here.
+  const [chosenDeckId, setChosenDeckId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const deferredSearch = useDeferredValue(search);
+  const deckId = chosenDeckId ?? activeDeck?.deck.id;
+  const deckContent = useDeckContent(deckId === NO_DECK ? undefined : deckId);
 
-  if (cards === undefined || events === undefined) {
+  if (
+    cards === undefined ||
+    events === undefined ||
+    decks === undefined ||
+    customKanjiIds === undefined ||
+    deckId === undefined ||
+    deckContent === undefined
+  ) {
     return (
       <section className="panel" aria-busy="true">
         <h1>Collection</h1>
@@ -78,9 +103,24 @@ export function CollectionPage() {
     );
   }
 
+  // Learned characters whose custom deck was deleted keep their card and history.
+  const orphans: StudyEntry[] = cards
+    .filter((card) => catalog.byId(card.kanjiId) === undefined && !customKanjiIds.has(card.kanjiId))
+    .map((card, index) => ({
+      id: card.kanjiId,
+      literal: literalFromKanjiId(card.kanjiId),
+      meanings: [],
+      onReadings: [],
+      kunReadings: [],
+      readings: [],
+      strokeCount: null,
+      curriculumOrder: index,
+    }));
+  const entries = deckId === NO_DECK ? orphans : (deckContent?.entries ?? []);
+  const standard = deckContent?.deck.kind === 'standard' && deckId !== NO_DECK;
   const cardsByKanjiId = new Map(cards.map((card) => [card.kanjiId, card]));
   const eventsByCardId = groupEventsByCard(events);
-  const results: CollectionItem[] = searchEntries(catalog.all, deferredSearch)
+  const results: CollectionItem[] = searchEntries(entries, deferredSearch)
     .map((entry) => ({
       entry,
       status: statusFor(entry, cardsByKanjiId, eventsByCardId, now),
@@ -99,10 +139,33 @@ export function CollectionPage() {
         <p className="eyebrow">The wall</p>
         <h1 id="collection-title">Collection</h1>
         <p>
-          Browse all {catalog.all.length.toLocaleString()} Jōyō characters. Browsing never
-          introduces a character or changes its schedule.
+          {deckId === NO_DECK
+            ? 'Characters you have practised that are no longer in any deck. Their progress is kept.'
+            : standard
+              ? `Browse all ${catalog.all.length.toLocaleString()} Jōyō characters.`
+              : `Browse the ${entries.length.toLocaleString()} ${entries.length === 1 ? 'character' : 'characters'} of this deck.`}{' '}
+          Browsing never introduces a character or changes its schedule.
         </p>
         <div className="collection-toolbar">
+          <label className="field">
+            <span>Deck</span>
+            <select
+              value={deckId}
+              onChange={(event) => {
+                setChosenDeckId(event.currentTarget.value);
+                setPage(1);
+              }}
+            >
+              {decks.map((deck) => (
+                <option key={deck.id} value={deck.id}>
+                  {deck.name}
+                </option>
+              ))}
+              {orphans.length === 0 && deckId !== NO_DECK ? null : (
+                <option value={NO_DECK}>Characters not in any deck</option>
+              )}
+            </select>
+          </label>
           <label className="field">
             <span>Search characters</span>
             <input
@@ -172,7 +235,14 @@ export function CollectionPage() {
                   <span className="character-tile__literal" lang="ja">
                     {entry.literal}
                   </span>
-                  <span className="character-tile__meaning">{entry.meanings[0] ?? '—'}</span>
+                  <span className="character-tile__meaning">
+                    {entry.meanings[0] ?? entry.readings?.[0] ?? '—'}
+                  </span>
+                  {entry.strokeCount === null && deckId !== NO_DECK ? (
+                    <span className="character-tile__warning" title="No stroke data">
+                      Not recognized
+                    </span>
+                  ) : null}
                   <span className="character-tile__status">{statusText}</span>
                 </Link>
               </li>

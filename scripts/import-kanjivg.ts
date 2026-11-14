@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { gunzipSync } from 'node:zlib';
@@ -9,6 +9,7 @@ import { kanjiEntrySchema } from '../src/domain/schemas';
 import { sha256, stableJson } from './catalog-pipeline';
 import {
   buildReferenceStrokes,
+  buildStrokeShards,
   KANJIVG_DOWNLOAD_URL,
   KANJIVG_LICENSE_URL,
   KANJIVG_PROJECT_URL,
@@ -19,6 +20,14 @@ const defaultInputPath = resolve('data/raw/kanjivg.xml.gz');
 const catalogPath = resolve('src/data/kanji.generated.json');
 const strokesOutputPath = resolve('src/data/strokes.generated.json');
 const manifestOutputPath = resolve('src/data/strokes-manifest.json');
+const shardOutputDirectory = resolve('src/data/stroke-shards');
+
+/** One character per line keeps the files compact and their diffs reviewable. */
+function strokesFileText(data: Readonly<Record<string, readonly string[]>>): string {
+  return `{\n${Object.entries(data)
+    .map(([id, strokes]) => `${JSON.stringify(id)}:${JSON.stringify(strokes)}`)
+    .join(',\n')}\n}\n`;
+}
 
 const fetchMetadataSchema = z.looseObject({
   retrievedAt: z.number().int().nonnegative(),
@@ -52,11 +61,16 @@ export async function importKanjivg(inputPath = defaultInputPath): Promise<void>
   }
 
   const catalog = kanjiEntrySchema.array().parse(JSON.parse(catalogText) as unknown);
-  const build = buildReferenceStrokes(gunzipSync(inputBytes).toString('utf8'), catalog);
-  // One character per line keeps the file compact and its diffs reviewable.
-  const strokesText = `{\n${Object.entries(build.data)
-    .map(([id, strokes]) => `${JSON.stringify(id)}:${JSON.stringify(strokes)}`)
-    .join(',\n')}\n}\n`;
+  const xml = gunzipSync(inputBytes).toString('utf8');
+  const build = buildReferenceStrokes(xml, catalog);
+  const strokesText = strokesFileText(build.data);
+
+  // The full KanjiVG set, for characters in custom decks.
+  const shardBuild = buildStrokeShards(xml);
+  const shardTexts = [...shardBuild.shards].map(
+    ([key, data]) => [`${key}.json`, strokesFileText(data)] as const,
+  );
+  const shardsSha256 = sha256(shardTexts.map(([name, text]) => `${name}\n${text}`).join(''));
 
   const manifest = {
     schemaVersion: 1,
@@ -64,6 +78,12 @@ export async function importKanjivg(inputPath = defaultInputPath): Promise<void>
     strokeTotal: build.strokeTotal,
     strokesSha256: sha256(strokesText),
     strokeCountDifferences: build.strokeCountDifferences,
+    shards: {
+      fileCount: shardTexts.length,
+      entryCount: shardBuild.entryCount,
+      strokeTotal: shardBuild.strokeTotal,
+      sha256: shardsSha256,
+    },
     source: {
       name: 'KanjiVG',
       release: KANJIVG_RELEASE,
@@ -77,10 +97,19 @@ export async function importKanjivg(inputPath = defaultInputPath): Promise<void>
   };
 
   await writeAtomically(strokesOutputPath, strokesText);
+  await mkdir(shardOutputDirectory, { recursive: true });
+  const expected = new Set<string>(shardTexts.map(([name]) => name));
+  for (const name of await readdir(shardOutputDirectory)) {
+    if (!expected.has(name)) await rm(resolve(shardOutputDirectory, name));
+  }
+  for (const [name, text] of shardTexts) {
+    await writeAtomically(resolve(shardOutputDirectory, name), text);
+  }
   await writeAtomically(manifestOutputPath, stableJson(manifest));
   console.log(
     `Imported ${String(manifest.entryCount)} characters (${String(build.strokeTotal)} strokes); ` +
-      `${String(build.strokeCountDifferences.length)} differ from the catalog stroke count.`,
+      `${String(build.strokeCountDifferences.length)} differ from the catalog stroke count. ` +
+      `Full set: ${String(shardBuild.entryCount)} characters in ${String(shardTexts.length)} shards.`,
   );
 }
 

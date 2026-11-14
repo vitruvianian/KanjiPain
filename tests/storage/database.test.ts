@@ -146,6 +146,7 @@ describe('database initialization', () => {
       dailyNewLimit: 0,
       inputMode: 'paper',
       onboardingCompleted: true,
+      activeDeckId: 'standard',
     };
     await database.settings.put(customSettings);
 
@@ -198,6 +199,7 @@ describe('storage repositories', () => {
       dailyNewLimit: 99,
       inputMode: 'drawing',
       onboardingCompleted: false,
+      activeDeckId: 'standard',
     });
     const repository = createStorageRepositories(database);
 
@@ -220,5 +222,44 @@ describe('transactions', () => {
 
     await expect(database.cards.count()).resolves.toBe(0);
     await expect(database.events.count()).resolves.toBe(0);
+  });
+
+  it('migrates a version 1 database with all progress intact', async () => {
+    const name = `kanjipain-storage-migration-${crypto.randomUUID()}`;
+    databaseNames.add(name);
+    // The schema exactly as version 0.1.0 created it, before decks existed.
+    const legacy = new Dexie(name);
+    legacy.version(1).stores({
+      cards: 'id,dueAt,kanjiId,introducedLocalDay',
+      events: 'id,sessionId,cardId,occurredAt,[cardId+occurredAt]',
+      sessions: 'id,status,startedAt',
+      settings: 'id',
+      contentIssues: 'id,cardId,createdAt',
+      meta: 'key',
+    });
+    const legacyCard = card();
+    await legacy.table('settings').put({
+      id: 'user',
+      dailyNewLimit: 3,
+      inputMode: 'paper',
+      onboardingCompleted: true,
+    });
+    await legacy.table('cards').put(legacyCard);
+    legacy.close();
+
+    const migrated = createDatabase(name);
+    openDatabases.push(migrated);
+    await initializeDatabase(migrated);
+
+    await expect(migrated.settings.get('user')).resolves.toEqual({
+      id: 'user',
+      dailyNewLimit: 3,
+      inputMode: 'paper',
+      onboardingCompleted: true,
+      activeDeckId: 'standard',
+    });
+    await expect(migrated.cards.toArray()).resolves.toEqual([legacyCard]);
+    await expect(migrated.decks.count()).resolves.toBe(0);
+    await expect(migrated.deckEntries.count()).resolves.toBe(0);
   });
 });

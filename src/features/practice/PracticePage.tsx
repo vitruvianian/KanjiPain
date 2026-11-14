@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { useAppServices, useCard } from '../../app/useAppServices';
+import { useAppServices, useCard, useDeckContent } from '../../app/useAppServices';
 import { Button } from '../../components/Button';
+import { literalFromKanjiId } from '../../domain/ids';
 import { FeedbackPanel } from './FeedbackPanel';
 import { IntroductionPanel } from './IntroductionPanel';
 import { PromptPanel } from './PromptPanel';
@@ -37,6 +38,15 @@ export function PracticePage() {
       ? phase.cardId
       : '';
   const card = useCard(phaseCardId);
+  // A session keeps the deck it started with, whichever deck is active now.
+  const content = useDeckContent(session?.deckId);
+  const extraReferenceIds = useMemo(
+    () =>
+      (content?.entries ?? [])
+        .filter((entry) => entry.strokeCount !== null && catalog.byId(entry.id) === undefined)
+        .map((entry) => entry.id),
+    [catalog, content],
+  );
 
   useEffect(() => {
     if (session !== null && session.status !== 'active') {
@@ -83,14 +93,14 @@ export function PracticePage() {
   }
 
   const entry =
-    phase === undefined
+    phase === undefined || content === undefined || content === null
       ? undefined
       : phase.kind === 'introduction'
-        ? catalog.byId(phase.kanjiId)
+        ? content.byId(phase.kanjiId)
         : card === undefined
           ? undefined
-          : catalog.byId(card.kanjiId);
-  const note = entry === undefined ? undefined : catalog.teachingNotes[entry.id];
+          : content.byId(card.kanjiId);
+  const note = entry === undefined ? undefined : content?.noteFor(entry.id);
   const primaryPending = session.primaryItems.filter((item) => item.status === 'pending').length;
   const rematchPending = session.rematchItems.filter((item) => item.status === 'pending').length;
 
@@ -99,6 +109,9 @@ export function PracticePage() {
       <h1 className="visually-hidden">Practice</h1>
       <div className="practice-toolbar">
         <p className="practice-progress">
+          {content === undefined || content === null ? null : (
+            <span className="practice-deck">{content.deck.name} · </span>
+          )}
           {session.mode === undefined ? null : (
             <span className="practice-mode">{MODE_LABELS[session.mode]} · </span>
           )}
@@ -177,7 +190,8 @@ export function PracticePage() {
           phase={phase}
           entry={entry}
           busy={busy}
-          literalOf={(id) => catalog.byId(id)?.literal}
+          extraReferenceIds={extraReferenceIds}
+          literalOf={literalFromKanjiId}
           onGrade={(grade, checkerVerdict) => {
             void practice.grade(grade, checkerVerdict);
           }}

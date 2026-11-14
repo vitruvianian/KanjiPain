@@ -2,10 +2,17 @@ import { StrokeOrder } from '../../components/StrokeOrder';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
-import { useAllEvents, useAppServices, useCard } from '../../app/useAppServices';
+import {
+  useAllEvents,
+  useAppServices,
+  useCardState,
+  useDeckEntriesForKanji,
+  useDecks,
+} from '../../app/useAppServices';
 import { useNow } from '../../app/useNow';
 import { Button } from '../../components/Button';
-import { cardId as productionCardId } from '../../domain/ids';
+import { cardId as productionCardId, literalFromKanjiId } from '../../domain/ids';
+import { kanjiIdSchema } from '../../domain/schemas';
 import type { CharacterStatus } from '../../domain/session-types';
 import { deriveCharacterStatus } from '../../domain/status';
 import type { CardRecord, Grade, HintKey, ReviewEvent, UnixMs } from '../../domain/types';
@@ -130,36 +137,78 @@ function ProgressDetails({
 
 export function CharacterPage() {
   const { id } = useParams();
-  const { catalog, contentIssues } = useAppServices();
-  const entry = id === undefined ? undefined : catalog.byId(id);
-  const card = useCard(entry === undefined ? '' : productionCardId(entry.id));
+  const { catalog, contentIssues, decks: deckService } = useAppServices();
+  const kanjiId = id !== undefined && kanjiIdSchema.safeParse(id).success ? id : undefined;
+  // A character can come from the dictionary, from custom decks, or from both.
+  const entry = kanjiId === undefined ? undefined : catalog.byId(kanjiId);
+  const customEntries = useDeckEntriesForKanji(kanjiId ?? '');
+  const decks = useDecks();
+  const cardState = useCardState(kanjiId === undefined ? '' : productionCardId(kanjiId));
+  const card = cardState ?? undefined;
   const events = useAllEvents();
   const now = useNow();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [targetDeckId, setTargetDeckId] = useState('');
 
-  if (entry === undefined) {
+  const loading =
+    events === undefined ||
+    customEntries === undefined ||
+    decks === undefined ||
+    cardState === undefined;
+  const known = entry !== undefined || (customEntries?.length ?? 0) > 0 || card !== undefined;
+
+  if (kanjiId === undefined || (!loading && !known)) {
     return (
       <section className="panel">
         <h1>Character not found</h1>
         <p>
-          No Jōyō character uses the address <code>{id ?? '(missing)'}</code>. Character links use
-          stable ASCII IDs, not page positions.
+          No character in your decks uses the address <code>{id ?? '(missing)'}</code>. Character
+          links use stable ASCII IDs, not page positions.
         </p>
         <Link to="/collection">Return to the collection</Link>
       </section>
     );
   }
 
-  if (events === undefined) {
+  const literal = entry?.literal ?? literalFromKanjiId(kanjiId);
+
+  if (loading) {
     return (
       <section className="panel" aria-busy="true">
-        <h1 lang="ja">{entry.literal}</h1>
+        <h1 lang="ja">{literal}</h1>
         <p role="status">Loading review history…</p>
       </section>
     );
   }
+
+  const deckNames = new Map(decks.map((deck) => [deck.id, deck.name]));
+  const memberDeckIds = new Set(customEntries.map((custom) => custom.deckId));
+  const addableDecks = decks.filter(
+    (deck) => deck.kind === 'custom' && !memberDeckIds.has(deck.id),
+  );
+  const firstCustom = customEntries[0];
+
+  const addToDeck = async () => {
+    const deckId = targetDeckId === '' ? addableDecks[0]?.id : targetDeckId;
+    if (deckId === undefined) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await deckService.addFromStandard(deckId, [kanjiId]);
+      setNotice(
+        `Added to ${deckNames.get(deckId) ?? 'the deck'} with its dictionary meanings and readings. You can change them in the deck.`,
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'The character could not be added.');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const history = card === undefined ? [] : events.filter((event) => event.cardId === card.id);
   const recent = [...history]
@@ -191,47 +240,129 @@ export function CharacterPage() {
   return (
     <div className="character-shell">
       <p className="breadcrumb">
-        <Link to="/collection">Collection</Link> / <span lang="ja">{entry.literal}</span>
+        <Link to="/collection">Collection</Link> / <span lang="ja">{literal}</span>
       </p>
 
-      <section className="panel character-hero" aria-labelledby="character-title">
-        <p className="eyebrow">
-          Grade {entry.grade === 8 ? '8 (additional Jōyō)' : String(entry.grade)}
-        </p>
-        <h1 id="character-title">
-          <span lang="ja">{entry.literal}</span>
-        </h1>
-        <p className="character-meanings">{entry.meanings.join('; ')}</p>
+      {entry === undefined ? (
+        <section className="panel character-hero" aria-labelledby="character-title">
+          <p className="eyebrow">Custom character</p>
+          <h1 id="character-title">
+            <span lang="ja">{literal}</span>
+          </h1>
+          <p className="character-meanings">
+            {firstCustom === undefined || firstCustom.meanings.length === 0
+              ? 'No meaning recorded'
+              : firstCustom.meanings.join('; ')}
+          </p>
+          <p className="muted">
+            This character is not in the Jōyō dictionary data. What is shown comes from your own
+            decks.
+          </p>
+        </section>
+      ) : (
+        <section className="panel character-hero" aria-labelledby="character-title">
+          <p className="eyebrow">
+            Grade {entry.grade === 8 ? '8 (additional Jōyō)' : String(entry.grade)}
+          </p>
+          <h1 id="character-title">
+            <span lang="ja">{entry.literal}</span>
+          </h1>
+          <p className="character-meanings">{entry.meanings.join('; ')}</p>
 
-        <dl className="character-facts">
-          <ReadingGroup title="On readings (音読み)" readings={entry.onReadings} />
-          <ReadingGroup title="Kun readings (訓読み)" readings={entry.kunReadings} />
-          <div>
-            <dt>Stroke count</dt>
-            <dd>{String(entry.strokeCount)}</dd>
-          </div>
-          <div>
-            <dt>Frequency rank</dt>
-            <dd>
-              {entry.frequencyRank === null ? 'Not ranked' : `#${String(entry.frequencyRank)}`}
-            </dd>
-          </div>
-          <div>
-            <dt>Jōyō curriculum order</dt>
-            <dd>#{String(entry.curriculumOrder + 1)}</dd>
-          </div>
-        </dl>
+          <dl className="character-facts">
+            <ReadingGroup title="On readings (音読み)" readings={entry.onReadings} />
+            <ReadingGroup title="Kun readings (訓読み)" readings={entry.kunReadings} />
+            <div>
+              <dt>Stroke count</dt>
+              <dd>{String(entry.strokeCount)}</dd>
+            </div>
+            <div>
+              <dt>Frequency rank</dt>
+              <dd>
+                {entry.frequencyRank === null ? 'Not ranked' : `#${String(entry.frequencyRank)}`}
+              </dd>
+            </div>
+            <div>
+              <dt>Jōyō curriculum order</dt>
+              <dd>#{String(entry.curriculumOrder + 1)}</dd>
+            </div>
+          </dl>
 
-        <p className="muted reading-note">
-          Readings are shown exactly as stored. A period (.) separates a stem from okurigana that
-          are written in kana, as in <span lang="ja">た.べる</span>. A hyphen (-) marks an affix
-          boundary. These marks are structural, not extra sounds.
-        </p>
+          <p className="muted reading-note">
+            Readings are shown exactly as stored. A period (.) separates a stem from okurigana that
+            are written in kana, as in <span lang="ja">た.べる</span>. A hyphen (-) marks an affix
+            boundary. These marks are structural, not extra sounds.
+          </p>
+        </section>
+      )}
+
+      <section className="panel" aria-labelledby="decks-title">
+        <h2 id="decks-title">Decks</h2>
+        {entry === undefined && customEntries.length === 0 ? (
+          <p>
+            This character is not in any deck, so sessions will not show it. Its progress and
+            history are kept, and return if you add it to a deck again.
+          </p>
+        ) : (
+          <ul className="deck-memberships">
+            {entry === undefined ? null : (
+              <li>
+                <strong>{deckNames.get('standard') ?? 'Standard'}</strong>
+                <span className="muted"> — dictionary meanings and readings, shown above.</span>
+              </li>
+            )}
+            {customEntries.map((custom) => (
+              <li key={custom.id}>
+                <Link to={`/decks/${custom.deckId}`}>
+                  {deckNames.get(custom.deckId) ?? 'Custom deck'}
+                </Link>
+                <span className="muted">
+                  {' — '}
+                  {custom.meanings.length === 0 ? 'no meaning' : custom.meanings.join(', ')}
+                  {custom.readingCues.length === 0 ? null : (
+                    <>
+                      {' · '}
+                      <span lang="ja">{custom.readingCues.join('・')}</span>
+                    </>
+                  )}
+                </span>
+                {custom.note === undefined ? null : <p className="muted">Note: {custom.note}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
+        {entry === undefined || addableDecks.length === 0 ? null : (
+          <div className="deck-add">
+            <label className="field">
+              <span>Add to a custom deck</span>
+              <select
+                value={targetDeckId === '' ? (addableDecks[0]?.id ?? '') : targetDeckId}
+                onChange={(event) => {
+                  setTargetDeckId(event.currentTarget.value);
+                }}
+              >
+                {addableDecks.map((deck) => (
+                  <option key={deck.id} value={deck.id}>
+                    {deck.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button
+              disabled={busy}
+              onClick={() => {
+                void addToDeck();
+              }}
+            >
+              Add to deck
+            </Button>
+          </div>
+        )}
       </section>
 
       <section className="panel" aria-labelledby="stroke-order-title">
         <h2 id="stroke-order-title">How to write it</h2>
-        <StrokeOrder key={entry.id} kanjiId={entry.id} literal={entry.literal} />
+        <StrokeOrder key={kanjiId} kanjiId={kanjiId} literal={literal} />
       </section>
 
       <section className="panel" aria-labelledby="progress-title">

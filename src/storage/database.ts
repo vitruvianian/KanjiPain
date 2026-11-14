@@ -2,12 +2,15 @@ import Dexie, { type EntityTable } from 'dexie';
 
 import { settingsRecordSchema } from '../domain/schemas';
 import type { SessionRecord } from '../domain/session-types';
-import type {
-  CardRecord,
-  ContentIssue,
-  MetaRecord,
-  ReviewEvent,
-  SettingsRecord,
+import {
+  STANDARD_DECK_ID,
+  type CardRecord,
+  type ContentIssue,
+  type DeckEntryRecord,
+  type DeckRecord,
+  type MetaRecord,
+  type ReviewEvent,
+  type SettingsRecord,
 } from '../domain/types';
 import { InvalidPersistedDataError, mapStorageError } from './errors';
 
@@ -18,6 +21,7 @@ export const DEFAULT_SETTINGS: Readonly<SettingsRecord> = Object.freeze({
   dailyNewLimit: 5,
   inputMode: 'drawing',
   onboardingCompleted: false,
+  activeDeckId: STANDARD_DECK_ID,
 });
 
 export class KanjiPainDatabase extends Dexie {
@@ -27,6 +31,8 @@ export class KanjiPainDatabase extends Dexie {
   settings!: EntityTable<SettingsRecord, 'id'>;
   contentIssues!: EntityTable<ContentIssue, 'id'>;
   meta!: EntityTable<MetaRecord, 'key'>;
+  decks!: EntityTable<DeckRecord, 'id'>;
+  deckEntries!: EntityTable<DeckEntryRecord, 'id'>;
 
   constructor(name = DEFAULT_DATABASE_NAME) {
     super(name);
@@ -39,6 +45,21 @@ export class KanjiPainDatabase extends Dexie {
       contentIssues: 'id,cardId,createdAt',
       meta: 'key',
     });
+
+    // Custom decks. Existing progress is untouched: cards stay one per character.
+    this.version(2)
+      .stores({
+        decks: 'id',
+        deckEntries: 'id,deckId,kanjiId',
+      })
+      .upgrade((transaction) =>
+        transaction
+          .table<SettingsRecord>('settings')
+          .toCollection()
+          .modify((settings: Partial<SettingsRecord>) => {
+            settings.activeDeckId ??= STANDARD_DECK_ID;
+          }),
+      );
   }
 }
 
@@ -59,6 +80,9 @@ export async function initializeDatabase(database: KanjiPainDatabase): Promise<v
       const validation = settingsRecordSchema.safeParse(currentSettings);
       if (!validation.success) {
         throw new InvalidPersistedDataError('settings', validation.error);
+      }
+      if (currentSettings.activeDeckId !== validation.data.activeDeckId) {
+        await database.settings.put(validation.data);
       }
     });
   } catch (error) {

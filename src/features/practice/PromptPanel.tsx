@@ -5,12 +5,12 @@ import { DrawingPad } from '../../components/DrawingPad';
 import { PaperInput } from '../../components/PaperInput';
 import { buildPrompt } from '../../domain/prompts';
 import type { PromptPhase } from '../../domain/session-types';
-import type { InputMode, KanjiEntry, Stroke, TeachingNote } from '../../domain/types';
+import type { InputMode, Stroke, StudyEntry, TeachingNote } from '../../domain/types';
 import type { DraftChange } from '../../services/session-service';
 
 interface PromptPanelProps {
   readonly phase: PromptPhase;
-  readonly entry: KanjiEntry;
+  readonly entry: StudyEntry;
   readonly note?: TeachingNote;
   readonly busy: boolean;
   readonly onSaveDraft: (change: DraftChange) => void;
@@ -45,10 +45,12 @@ export function PromptPanel({
     <section className="exercise-panel" aria-labelledby="prompt-title">
       <p className="eyebrow">Write from memory</p>
       <h2 id="prompt-title">Write the kanji for:</h2>
-      <p className="prompt-meaning">{prompt.meaningCue}</p>
-      <p className="prompt-readings">
-        Reading cues: <span lang="ja">{prompt.readingCues.join('・')}</span>
-      </p>
+      {prompt.meaningCue === '' ? null : <p className="prompt-meaning">{prompt.meaningCue}</p>}
+      {prompt.readingCues.length === 0 ? null : (
+        <p className={prompt.meaningCue === '' ? 'prompt-meaning' : 'prompt-readings'}>
+          Reading cues: <span lang="ja">{prompt.readingCues.join('・')}</span>
+        </p>
+      )}
 
       <fieldset className="mode-switch">
         <legend>Input mode</legend>

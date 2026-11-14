@@ -10,6 +10,7 @@ import {
 } from '../../src/services/backup-service';
 import type { ServiceHarness } from './service-fixtures';
 import { catalogEntry, createHarness } from './service-fixtures';
+import { parseDeckTable } from '../../src/domain/deck-import';
 import type { KanjiEntry } from '../../src/domain/types';
 import type { SessionRecord } from '../../src/domain/session-types';
 import { backupEnvelopeSchema } from '../../src/storage/backup-schema';
@@ -138,7 +139,14 @@ describe('backup service', () => {
     expect(json).not.toContain('"strokes"');
 
     const preview = await backup.previewImport(json);
-    expect(preview.counts).toEqual({ cards: 1, events: 1, sessions: 1, contentIssues: 1 });
+    expect(preview.counts).toEqual({
+      cards: 1,
+      events: 1,
+      sessions: 1,
+      contentIssues: 1,
+      decks: 0,
+      deckEntries: 0,
+    });
     expect(preview.datasetVersionMatches).toBe(true);
 
     const before = {
@@ -195,9 +203,9 @@ describe('backup service', () => {
     await expect(backup.previewImport('{')).rejects.toBeInstanceOf(BackupValidationError);
 
     const versionObject = parseObject(json);
-    versionObject.version = 2;
+    versionObject.version = 3;
     await expect(backup.previewImport(JSON.stringify(versionObject))).rejects.toThrow(
-      /version 2 is not supported/i,
+      /version 3 is not supported/i,
     );
 
     const schedulerObject = parseObject(json);
@@ -211,7 +219,7 @@ describe('backup service', () => {
     );
   });
 
-  it('rejects unknown catalog IDs, duplicate events, and dangling references', async () => {
+  it('rejects mismatched cards, duplicate events, and dangling references', async () => {
     const harness = await createHarness(databaseName('references'));
     await completeNewCardSession(harness, catalogEntry(0));
     const backup = createBackupService({
@@ -221,6 +229,7 @@ describe('backup service', () => {
     });
     const json = await backup.exportJson();
 
+    // A card outside the catalog is still tied to its session, so renaming it alone dangles.
     const unknownObject = parseObject(json);
     const unknownCard = arrayField(unknownObject, 'cards')[0];
     if (unknownCard === undefined) {
@@ -228,15 +237,8 @@ describe('backup service', () => {
     }
     unknownCard.kanjiId = 'k-ffff';
     unknownCard.id = 'k-ffff:production';
-    const state = unknownCard.schedulerState;
-    if (typeof state === 'object' && state !== null) {
-      const inner = (state as Record<string, unknown>).card;
-      if (typeof inner === 'object' && inner !== null) {
-        (inner as Record<string, unknown>).cardId = 'k-ffff:production';
-      }
-    }
     await expect(backup.previewImport(JSON.stringify(unknownObject))).rejects.toThrow(
-      /outside the current catalog/i,
+      /scheduler state for a different card|missing card/i,
     );
 
     const duplicateObject = parseObject(json);
@@ -332,5 +334,134 @@ describe('backup service', () => {
     });
     const json = await backup.exportJson();
     expect(backupEnvelopeSchema.parse(JSON.parse(json) as unknown).sessions).toHaveLength(1);
+  });
+
+  it('still imports a version 1 backup, into the Standard deck only', async () => {
+    const harness = await createHarness(databaseName('v1-source'));
+    await completeNewCardSession(harness, catalogEntry(0));
+    const exported = parseObject(
+      await createBackupService({
+        database: harness.database,
+        catalog: harness.catalog,
+        clock: harness.clock,
+      }).exportJson(),
+    );
+    // What version 0.1.0 wrote: no decks, and settings without an active deck.
+    const legacy: Record<string, unknown> = { ...exported, version: 1 };
+    delete legacy.decks;
+    delete legacy.deckEntries;
+    delete (legacy.settings as Record<string, unknown>).activeDeckId;
+    const json = JSON.stringify(legacy);
+
+    const target = await createHarness(databaseName('v1-target'));
+    const deck = await target.decks.createDeck('Will be replaced');
+    await target.decks.setActiveDeck(deck.id);
+    const backup = createBackupService({
+      database: target.database,
+      catalog: target.catalog,
+      clock: target.clock,
+    });
+
+    const preview = await backup.previewImport(json);
+    expect(preview.version).toBe(1);
+    expect(preview.counts).toMatchObject({ cards: 1, decks: 0, deckEntries: 0 });
+    await backup.replaceWithImport(json);
+
+    await expect(target.database.cards.count()).resolves.toBe(1);
+    await expect(target.database.decks.count()).resolves.toBe(0);
+    expect((await target.database.settings.get('user'))?.activeDeckId).toBe('standard');
+  });
+
+  it('round-trips custom decks, and progress for characters outside every deck', async () => {
+    const harness = await createHarness(databaseName('v2-source'));
+    const deck = await harness.decks.createDeck('Pets');
+    await harness.decks.commitImport(
+      await harness.decks.previewImport(
+        deck.id,
+        parseDeckTable('kanji,meanings,readings\n猫,cat,ねこ\n☃,snowman,\n'),
+      ),
+    );
+    await harness.decks.setActiveDeck(deck.id);
+    // Learns 猫 in the custom deck: a card for a character outside the catalog.
+    const finished = await completeNewCardSession(harness, {
+      ...catalogEntry(0),
+      id: 'k-732b',
+      literal: '猫',
+    });
+    expect(finished.deckId).toBe(deck.id);
+    const source = createBackupService({
+      database: harness.database,
+      catalog: harness.catalog,
+      clock: harness.clock,
+    });
+    const json = await source.exportJson();
+    expect(parseObject(json).version).toBe(2);
+
+    const target = await createHarness(databaseName('v2-target'));
+    const backup = createBackupService({
+      database: target.database,
+      catalog: target.catalog,
+      clock: target.clock,
+    });
+    const preview = await backup.previewImport(json);
+    expect(preview.counts).toMatchObject({ cards: 1, decks: 1, deckEntries: 2 });
+    expect(preview.cardsOutsideDecks).toBe(0);
+    await backup.replaceWithImport(json);
+
+    await expect(target.database.decks.toArray()).resolves.toEqual(
+      await harness.database.decks.toArray(),
+    );
+    await expect(target.database.deckEntries.toArray()).resolves.toEqual(
+      await harness.database.deckEntries.toArray(),
+    );
+    expect((await target.database.settings.get('user'))?.activeDeckId).toBe(deck.id);
+
+    // Deleting the deck orphans the card; the export must still be importable.
+    await harness.decks.deleteDeck(deck.id);
+    const orphaned = await source.exportJson();
+    const orphanPreview = await backup.previewImport(orphaned);
+    expect(orphanPreview.cardsOutsideDecks).toBe(1);
+    expect(orphanPreview.settings.activeDeckId).toBe('standard');
+  });
+
+  it('rejects deck entries that dangle, repeat, or leak their character', async () => {
+    const harness = await createHarness(databaseName('v2-invalid'));
+    const deck = await harness.decks.createDeck('Pets');
+    await harness.decks.commitImport(
+      await harness.decks.previewImport(deck.id, parseDeckTable('kanji,meanings\n猫,cat\n')),
+    );
+    const backup = createBackupService({
+      database: harness.database,
+      catalog: harness.catalog,
+      clock: harness.clock,
+    });
+    const json = await backup.exportJson();
+
+    const dangling = parseObject(json);
+    dangling.decks = [];
+    await expect(backup.previewImport(JSON.stringify(dangling))).rejects.toThrow(/missing deck/i);
+
+    const repeated = parseObject(json);
+    const entries = arrayField(repeated, 'deckEntries');
+    entries.push({ ...entries[0] });
+    await expect(backup.previewImport(JSON.stringify(repeated))).rejects.toThrow(
+      /duplicate deck entry/i,
+    );
+
+    const leaking = parseObject(json);
+    const leakingEntry = arrayField(leaking, 'deckEntries')[0];
+    if (leakingEntry === undefined) throw new Error('Expected a deck entry.');
+    leakingEntry.meanings = ['the 猫'];
+    await expect(backup.previewImport(JSON.stringify(leaking))).rejects.toThrow(
+      /contains its own character/i,
+    );
+
+    const standard = parseObject(json);
+    const standardDeck = arrayField(standard, 'decks')[0];
+    if (standardDeck === undefined) throw new Error('Expected a deck.');
+    standardDeck.id = 'standard';
+    await expect(backup.previewImport(JSON.stringify(standard))).rejects.toThrow(
+      /Standard deck is not stored/i,
+    );
   });
 });

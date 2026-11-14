@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-import { useAllCards, useAppServices } from '../../app/useAppServices';
+import { useActiveDeck, useAllCards } from '../../app/useAppServices';
 import { EXTRA_NEW_COUNT, PRIMARY_SESSION_LIMIT } from '../../domain/queue';
 
 interface ExtraPracticeProps {
@@ -13,12 +13,15 @@ interface ExtraPracticeProps {
  * again as soon as it ends, as many times as the learner wants.
  */
 export function ExtraPractice({ headingLevel = 2 }: ExtraPracticeProps) {
-  const { catalog } = useAppServices();
+  const deck = useActiveDeck();
   const cards = useAllCards();
-  if (cards === undefined) return null;
+  if (cards === undefined || deck === undefined) return null;
 
-  const unseen = catalog.all.length - cards.length;
-  const learned = cards.filter((card) => !card.suspended).length;
+  // Extra sessions draw on the active deck only, like regular ones.
+  const inDeck = cards.filter((card) => deck.byId(card.kanjiId) !== undefined);
+  const practicable = new Set(deck.practicable.map((entry) => entry.id));
+  const unseen = practicable.size - inDeck.filter((card) => practicable.has(card.kanjiId)).length;
+  const learned = inDeck.filter((card) => !card.suspended && practicable.has(card.kanjiId)).length;
   const Heading = headingLevel === 2 ? 'h2' : 'h3';
   const newBatch = Math.min(EXTRA_NEW_COUNT, unseen);
   const reviewBatch = Math.min(PRIMARY_SESSION_LIMIT, learned);

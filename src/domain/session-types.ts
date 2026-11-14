@@ -1,7 +1,7 @@
 import type {
   CardRecord,
   Grade,
-  KanjiEntry,
+  StudyEntry,
   KanjiId,
   ReviewEvent,
   RevealedAttemptDraft,
@@ -102,11 +102,16 @@ export interface SessionRecord {
   completedEventIds: string[];
   /** Absent on regular sessions, including every session saved before extra modes existed. */
   mode?: Exclude<SessionMode, 'regular'> | undefined;
+  /** Absent for the Standard deck, including every session saved before decks existed. */
+  deckId?: string | undefined;
+  /** The custom deck's revision when the session started. */
+  deckRevision?: number | undefined;
 }
 
 export interface PlanSessionInput {
   readonly cards: readonly CardRecord[];
-  readonly catalog: readonly KanjiEntry[];
+  /** The active deck's practicable characters. Cards outside it are left alone. */
+  readonly catalog: readonly StudyEntry[];
   readonly settings: SettingsRecord;
   readonly introducedToday: number;
   readonly now: UnixMs;

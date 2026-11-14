@@ -47,3 +47,12 @@ export function kanjiIdFromLiteral(literal: string): KanjiId {
 export function cardId(kanjiId: KanjiId, skill: Skill = 'production'): string {
   return `${kanjiId}:${skill}`;
 }
+
+/** The character a kanji ID stands for; the inverse of `kanjiIdFromLiteral`. */
+export function literalFromKanjiId(kanjiId: KanjiId): string {
+  return String.fromCodePoint(Number.parseInt(kanjiId.slice(2), 16));
+}
+
+export function deckEntryId(deckId: string, kanjiId: KanjiId): string {
+  return `${deckId}:${kanjiId}`;
+}

@@ -1,9 +1,16 @@
 import { Link } from 'react-router-dom';
 
-import { useAllCards, useAppServices, useSessions, useSettings } from '../../app/useAppServices';
+import {
+  useActiveDeck,
+  useAllCards,
+  useDeckContent,
+  useSessions,
+  useSettings,
+} from '../../app/useAppServices';
 import { useNow } from '../../app/useNow';
 import { localDayKey } from '../../domain/date';
 import { planSession } from '../../domain/queue';
+import { DeckSwitcher } from '../decks/DeckSwitcher';
 import { formatDate } from '../format';
 import { ExtraPractice } from '../practice/ExtraPractice';
 import { Onboarding } from './Onboarding';
@@ -33,10 +40,13 @@ function Stat({
 }
 
 export function HomePage() {
-  const { catalog } = useAppServices();
   const settings = useSettings();
   const cards = useAllCards();
   const sessions = useSessions();
+  const deck = useActiveDeck();
+  const sessionDeck = useDeckContent(
+    sessions?.find((session) => session.status === 'active')?.deckId,
+  );
   const now = useNow();
 
   if (settings === undefined) {
@@ -51,7 +61,7 @@ export function HomePage() {
     return <Onboarding />;
   }
 
-  if (cards === undefined || sessions === undefined) {
+  if (cards === undefined || sessions === undefined || deck === undefined) {
     return (
       <section className="panel" aria-busy="true">
         <p role="status">Reading today&apos;s practice plan…</p>
@@ -61,12 +71,15 @@ export function HomePage() {
 
   const day = localDayKey(now);
   const introducedToday = cards.filter((card) => card.introducedLocalDay === day).length;
-  const dueTotal = cards.filter((card) => !card.suspended && card.dueAt <= now).length;
-  const pausedTotal = cards.filter((card) => card.suspended).length;
+  // Everything here is about the active deck. Cards in other decks keep their own due dates.
+  const deckCards = cards.filter((card) => deck.byId(card.kanjiId) !== undefined);
+  const dueTotal = deckCards.filter((card) => !card.suspended && card.dueAt <= now).length;
+  const pausedTotal = deckCards.filter((card) => card.suspended).length;
   const remainingNew = Math.max(0, settings.dailyNewLimit - introducedToday);
+  const withoutCue = deck.entries.length - deck.practicable.length;
   const plan = planSession({
     cards,
-    catalog: catalog.all,
+    catalog: deck.practicable,
     settings,
     introducedToday,
     now,
@@ -92,11 +105,29 @@ export function HomePage() {
           self-grade.
         </p>
 
+        <DeckSwitcher />
+        {deck.entries.length === 0 ? (
+          <div className="banner banner--notice">
+            <p>
+              This deck is empty. <Link to={`/decks/${deck.deck.id}`}>Add characters</Link> to
+              practise with it.
+            </p>
+          </div>
+        ) : withoutCue > 0 ? (
+          <div className="banner banner--notice">
+            <p>
+              {String(withoutCue)} {withoutCue === 1 ? 'character needs' : 'characters need'} a
+              meaning or reading before practice can use {withoutCue === 1 ? 'it' : 'them'}.{' '}
+              <Link to={`/decks/${deck.deck.id}`}>Edit the deck</Link>.
+            </p>
+          </div>
+        ) : null}
+
         <dl className="home-stats">
           <Stat
             label="Due now"
             value={dueTotal}
-            description="Introduced characters whose scheduled review is ready."
+            description="Introduced characters in this deck whose scheduled review is ready."
           />
           <Stat
             label="New allowance today"
@@ -151,7 +182,11 @@ export function HomePage() {
               <h2 id="practice-action-title">Session in progress</h2>
               <p>
                 You have {String(remainingPrimary)} primary and {String(remainingRematch)} rematch
-                exercises remaining in this session.
+                exercises remaining in this session
+                {sessionDeck === undefined || sessionDeck === null
+                  ? ''
+                  : ` of the ${sessionDeck.deck.name} deck`}
+                .
               </p>
               <p className="muted">
                 Resume where you stopped. Saved hints, drawings, and grades stay in place.

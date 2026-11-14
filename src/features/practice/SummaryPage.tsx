@@ -1,11 +1,7 @@
+import { literalFromKanjiId } from '../../domain/ids';
 import { Link, useParams } from 'react-router-dom';
 
-import {
-  useAppServices,
-  useSessionEvents,
-  useSessionIntroducedCards,
-  useSessions,
-} from '../../app/useAppServices';
+import { useSessionEvents, useSessionIntroducedCards, useSessions } from '../../app/useAppServices';
 import { ExtraPractice } from './ExtraPractice';
 import { calculateSummary } from '../../domain/metrics';
 import type { SessionSummary } from '../../domain/session-types';
@@ -57,7 +53,6 @@ function SummaryContent({ sessionId }: { sessionId: string }) {
   const sessions = useSessions();
   const events = useSessionEvents(sessionId);
   const cards = useSessionIntroducedCards(sessionId);
-  const { catalog } = useAppServices();
   const session = sessions?.find((candidate) => candidate.id === sessionId);
 
   if (sessions === undefined || events === undefined || cards === undefined) {
@@ -74,9 +69,11 @@ function SummaryContent({ sessionId }: { sessionId: string }) {
   }
 
   const summary = calculateSummary(session, events, cards);
-  const introduced = cards
-    .map((card) => catalog.byId(card.kanjiId))
-    .filter((entry) => entry !== undefined);
+  // Introduced characters may come from a custom deck, so the ID is the source of the glyph.
+  const introduced = cards.map((card) => ({
+    id: card.kanjiId,
+    literal: literalFromKanjiId(card.kanjiId),
+  }));
 
   return (
     <section className="panel" aria-labelledby="summary-title">

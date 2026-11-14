@@ -1,6 +1,6 @@
 {
   "format": "kanjipain-backup",
-  "version": 1,
+  "version": 2,
   "exportedAt": 1577880000000,
   "datasetVersion": "4d5746dd603285b9ccd23e54b719cadf8b4ba41208d609c0cb4914cc4e35ed67",
   "scheduler": {
@@ -110,7 +110,10 @@
     "id": "user",
     "dailyNewLimit": 0,
     "inputMode": "drawing",
-    "onboardingCompleted": true
+    "onboardingCompleted": true,
+    "activeDeckId": "standard"
   },
-  "contentIssues": []
+  "contentIssues": [],
+  "decks": [],
+  "deckEntries": []
 }

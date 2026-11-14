@@ -28,7 +28,7 @@ Reference strokes for checking drawn characters are derived from **KanjiVG**, co
 - License: Creative Commons Attribution-ShareAlike 3.0 (CC BY-SA 3.0)
 - Bundled notice: [`public/licenses/kanjivg-license.txt`](./public/licenses/kanjivg-license.txt)
 
-[`src/data/strokes.generated.json`](./src/data/strokes.generated.json) is a transformed extract: for each catalog character, every stroke path is flattened to a line, simplified, and stored on a 0–255 grid in stroke order. Component groupings and stroke-type labels are not distributed. The adapted data remains under CC BY-SA 3.0.
+[`src/data/strokes.generated.json`](./src/data/strokes.generated.json) is a transformed extract: for each catalog character, every stroke path is flattened to a line, simplified, and stored on a 0–255 grid in stroke order. The same transformation is applied to every character in the KanjiVG release (about 6,700) and written to [`src/data/stroke-shards/`](./src/data/stroke-shards/) as 64 files keyed by code point modulo 64, so custom decks get stroke order for characters outside the catalog and load only the files they need. Component groupings and stroke-type labels are not distributed. The adapted data remains under CC BY-SA 3.0.
 
 KanjiVG and KANJIDIC2 disagree on the stroke count of nine characters that have two accepted written forms (for example 賭). They are listed under `strokeCountDifferences` in the strokes manifest. `data:validate` fails on any difference not listed there, so a new one must be reviewed before release. For these characters the checker does not judge a drawing made with the catalog's stroke count.
 
@@ -41,7 +41,7 @@ npm run data:validate
 npm run checker:selftest
 ```
 
-`strokes:fetch` downloads into ignored `data/raw/`; `strokes:import` never downloads. Review the manifest diff and the self-test report (it takes a few minutes): correct drawings should stay at 100% accepted, and the wrongly accepted list should stay short. Re-run `strokes:import` whenever the kanji catalog changes, since the stroke file must cover exactly the catalog's characters.
+`strokes:fetch` downloads into ignored `data/raw/`; `strokes:import` never downloads. Review the manifest diff and the self-test report (it takes a few minutes): correct drawings should stay at 100% accepted, and the wrongly accepted list should stay short. Re-run `strokes:import` whenever the kanji catalog changes, since the stroke file must cover exactly the catalog's characters. `strokes:import` also rewrites the shard files and records their count and hash under `shards` in the strokes manifest; custom-deck entries pick up new stroke data the next time the app starts.
 
 ## Noto Sans JP
 

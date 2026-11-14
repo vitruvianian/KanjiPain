@@ -6,6 +6,7 @@ import { Button } from '../../components/Button';
 import { localDayKey } from '../../domain/date';
 import type { InputMode, SettingsRecord } from '../../domain/types';
 import { MAX_BACKUP_BYTES, type BackupPreview } from '../../services/backup-service';
+import { DeckSwitcher } from '../decks/DeckSwitcher';
 import { formatDateTime } from '../format';
 import { ImportPreview } from './ImportPreview';
 
@@ -195,7 +196,8 @@ function BackupPanel({ activeSessionId }: { readonly activeSessionId: string | u
       setPreviewText('');
       setNotice(
         `Backup restored: ${String(restored.counts.cards)} cards, ${String(restored.counts.events)} review events, ` +
-          `${String(restored.counts.sessions)} sessions, and ${String(restored.counts.contentIssues)} content issues.`,
+          `${String(restored.counts.sessions)} sessions, ${String(restored.counts.contentIssues)} content issues, ` +
+          `and ${String(restored.counts.decks)} custom decks.`,
       );
     } catch (caught) {
       setError(
@@ -228,8 +230,8 @@ function BackupPanel({ activeSessionId }: { readonly activeSessionId: string | u
       <h2 id="backup-title">Portable progress</h2>
       <p>
         Export a validated JSON backup of cards, schedules, review history, finished sessions,
-        settings, and content issues. Import replaces current progress in one transaction; it never
-        merges two histories. Drawings are not included.
+        settings, content issues, and custom decks. Import replaces current progress in one
+        transaction; it never merges two histories. Drawings are not included.
       </p>
 
       <div className="backup-actions">
@@ -333,6 +335,15 @@ export function SettingsPage() {
         </p>
       </section>
 
+      <section className="panel" aria-labelledby="deck-setting-title">
+        <h2 id="deck-setting-title">Deck</h2>
+        <p>
+          Sessions, the Dojo and the Collection use the active deck. Switching decks never changes
+          progress: a character keeps one schedule in every deck that contains it.
+        </p>
+        <DeckSwitcher />
+      </section>
+
       <PreferencesForm
         key={`${String(settings.dailyNewLimit)}:${settings.inputMode}`}
         current={settings}
@@ -344,7 +355,8 @@ export function SettingsPage() {
       <section className="panel" aria-labelledby="storage-title">
         <h2 id="storage-title">Local storage</h2>
         <p>
-          Cards, events, sessions, settings, and content issues live in IndexedDB under the
+          Cards, events, sessions, settings, content issues, and custom decks live in IndexedDB
+          under the
           <code> kanjipain </code> database. Clearing site data or using a private window that is
           discarded will remove this progress.
         </p>

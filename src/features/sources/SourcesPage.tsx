@@ -145,8 +145,10 @@ export function SourcesPage() {
           Drawings are checked against stroke shapes, order and direction derived from{' '}
           <strong>KanjiVG</strong>, copyright © 2009–2013 Ulrich Apel. The bundled data is a
           transformed extract: each of the {strokesManifest.strokeTotal.toLocaleString()} strokes of
-          the catalog&apos;s characters is reduced to a simplified line. It is distributed under{' '}
-          <strong>{strokesManifest.source.license}</strong>.
+          the catalog&apos;s characters is reduced to a simplified line. For custom decks, the same
+          extract covers all {strokesManifest.shards.entryCount.toLocaleString()} characters in the
+          KanjiVG release. It is distributed under <strong>{strokesManifest.source.license}</strong>
+          .
         </p>
         <ul className="source-links">
           <li>{externalLink(strokesManifest.source.projectUrl, 'KanjiVG project')}</li>

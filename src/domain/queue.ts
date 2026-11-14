@@ -5,14 +5,14 @@ import type {
   SessionPlan,
   SessionRecord,
 } from './session-types';
-import type { CardRecord, KanjiEntry } from './types';
+import type { CardRecord, StudyEntry } from './types';
 
 export const PRIMARY_SESSION_LIMIT = 20;
 export const REMATCH_GAP_SIZE = 3;
 /** New characters in one extra "learn more" session. */
 export const EXTRA_NEW_COUNT = 5;
 
-function cardIdFor(entry: KanjiEntry): string {
+function cardIdFor(entry: StudyEntry): string {
   return `${entry.id}:production`;
 }
 
@@ -41,12 +41,10 @@ export function planSession({
     !card.suspended && (mode === 'review-ahead' || card.dueAt <= now);
   const dueCards = (mode === 'extra-new' ? [] : cards)
     .filter(reviewable)
-    .map((card): readonly [CardRecord, KanjiEntry] => {
+    // A card outside the active deck is not shown. It stays due for a deck that has it.
+    .flatMap((card): (readonly [CardRecord, StudyEntry])[] => {
       const entry = catalogById.get(card.kanjiId);
-      if (entry === undefined) {
-        throw new Error(`Card ${card.id} references missing catalog entry ${card.kanjiId}.`);
-      }
-      return [card, entry];
+      return entry === undefined ? [] : [[card, entry]];
     })
     .sort(
       ([leftCard, leftEntry], [rightCard, rightEntry]) =>

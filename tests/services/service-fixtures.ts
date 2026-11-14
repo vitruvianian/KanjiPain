@@ -3,8 +3,10 @@ import { vi } from 'vitest';
 import type { Clock } from '../../src/domain/clock';
 import type { IdSource } from '../../src/domain/ids';
 import type { CatalogManifest, CardRecord, KanjiEntry } from '../../src/domain/types';
+import type { StrokeLookup } from '../../src/recognition/load';
 import type { SchedulerAdapter } from '../../src/scheduler/types';
 import type { CatalogRepository } from '../../src/services/catalog';
+import { createDeckService, type DeckService } from '../../src/services/deck-service';
 import { DraftSaveQueue } from '../../src/services/draft-save-queue';
 import { createReviewService, type ReviewService } from '../../src/services/review-service';
 import { createSessionService, type SessionService } from '../../src/services/session-service';
@@ -151,7 +153,22 @@ export function dueCard(entry: KanjiEntry, overrides: Partial<CardRecord> = {}):
   };
 }
 
+/**
+ * A small stand-in for the KanjiVG stroke data: every character in the main CJK block is
+ * "recognized", with a stroke count derived from its code point; nothing else is.
+ */
+export const fixtureStrokeLookup: StrokeLookup = (ids) =>
+  Promise.resolve(
+    new Map(
+      ids.flatMap((id): [string, number][] => {
+        const codePoint = Number.parseInt(id.slice(2), 16);
+        return codePoint >= 0x4e00 && codePoint <= 0x9fff ? [[id, (codePoint % 20) + 1]] : [];
+      }),
+    ),
+  );
+
 export interface ServiceHarness {
+  readonly decks: DeckService;
   readonly database: KanjiPainDatabase;
   readonly clock: MutableClock;
   readonly ids: SequentialIds;
@@ -189,7 +206,14 @@ export async function createHarness(
     ids,
     draftQueue,
   });
-  return { database, clock, ids, scheduler, sessions, reviews, catalog };
+  const decks = createDeckService({
+    database,
+    catalog,
+    clock,
+    ids,
+    strokeLookup: fixtureStrokeLookup,
+  });
+  return { database, clock, ids, scheduler, sessions, reviews, catalog, decks };
 }
 
 export async function openDuePrompt(harness: ServiceHarness, entry = catalogEntry(0)) {

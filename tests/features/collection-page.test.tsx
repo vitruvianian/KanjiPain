@@ -51,8 +51,9 @@ describe('collection route', () => {
     expect(lakeLink).toHaveAttribute('href', '/kanji/k-6e56');
     await user.click(lakeLink);
 
-    expect(await screen.findByRole('heading', { level: 1, name: '湖' })).toBeInTheDocument();
-    expect(screen.getByText('lake')).toBeInTheDocument();
+    // The loading state shows the glyph too, so wait for the loaded page before the heading.
+    expect(await screen.findByText('lake')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: '湖' })).toBeInTheDocument();
     expect(screen.getByText('コ')).toBeInTheDocument();
     expect(screen.getByText('みずうみ')).toBeInTheDocument();
     expect(screen.getByText(/Not introduced yet/)).toBeInTheDocument();

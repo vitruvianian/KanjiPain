@@ -43,6 +43,7 @@ export function AppShell() {
                 Dojo
               </NavLink>
               <NavLink to="/collection">Collection</NavLink>
+              <NavLink to="/decks">Decks</NavLink>
               <NavLink to="/settings">Settings</NavLink>
             </nav>
           </>

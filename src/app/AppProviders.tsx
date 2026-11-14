@@ -2,10 +2,12 @@ import { type ReactNode, useEffect, useState } from 'react';
 
 import { systemClock } from '../domain/clock';
 import { systemIdSource } from '../domain/ids';
+import { lookupStrokeCounts } from '../recognition/load';
 import { initializeFsrsAdapter } from '../scheduler/fsrs-adapter';
 import { createBackupService } from '../services/backup-service';
 import { loadBundledCatalog, type CatalogRepository } from '../services/catalog';
 import { createContentIssueService } from '../services/content-issue-service';
+import { createDeckService } from '../services/deck-service';
 import { DraftSaveQueue } from '../services/draft-save-queue';
 import { createReviewService } from '../services/review-service';
 import { createSessionService } from '../services/session-service';
@@ -83,8 +85,18 @@ function StartupAttempt({
             ids: systemIdSource,
             draftQueue,
           });
+          const decks = createDeckService({
+            database,
+            catalog,
+            clock: systemClock,
+            ids: systemIdSource,
+            strokeLookup: lookupStrokeCounts,
+          });
+          // Newer stroke data may cover characters that were unrecognized when imported.
+          void decks.recheckStrokes().catch(() => undefined);
           setServices({
             catalog,
+            decks,
             storage,
             sessions,
             reviews,

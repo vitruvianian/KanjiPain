@@ -1,16 +1,20 @@
 import { useMemo, useState } from 'react';
 
 import { Button } from '../../components/Button';
+import { CharacterFacts } from '../../components/CharacterFacts';
+import { UnrecognizedWarning } from '../../components/UnrecognizedWarning';
 import { DrawingPad } from '../../components/DrawingPad';
 import type { FeedbackPhase } from '../../domain/session-types';
-import type { CheckerVerdict, Grade, KanjiEntry, KanjiId } from '../../domain/types';
+import type { CheckerVerdict, Grade, KanjiId, StudyEntry } from '../../domain/types';
 import { checkDrawing, suggestedGrade, type CheckResult } from '../../recognition/check';
 import { useReferenceStrokes } from '../../recognition/useReferenceStrokes';
 
 interface FeedbackPanelProps {
   readonly phase: FeedbackPhase;
-  readonly entry: KanjiEntry;
+  readonly entry: StudyEntry;
   readonly busy: boolean;
+  /** Characters of the deck outside the bundled stroke data, to check and compare against. */
+  readonly extraReferenceIds?: readonly KanjiId[];
   readonly literalOf: (id: KanjiId) => string | undefined;
   readonly onGrade: (grade: Grade, checkerVerdict?: CheckerVerdict) => void;
   readonly onFlagAmbiguous: () => void;
@@ -27,10 +31,6 @@ const MARK_LEGEND = [
   { mark: 'direction', color: '#1c5fa8', label: 'written backwards' },
   { mark: 'off', color: '#b3261e', label: 'out of place' },
 ] as const;
-
-function readingsText(readings: readonly string[]): string {
-  return readings.length === 0 ? 'None listed' : readings.join('・');
-}
 
 function strokes(count: number): string {
   return `${String(count)} ${count === 1 ? 'stroke' : 'strokes'}`;
@@ -101,13 +101,14 @@ export function FeedbackPanel({
   phase,
   entry,
   busy,
+  extraReferenceIds,
   literalOf,
   onGrade,
   onFlagAmbiguous,
 }: FeedbackPanelProps) {
   const { draft } = phase;
   const assisted = draft.surrendered || draft.hintKeysUsed.length > 0;
-  const references = useReferenceStrokes();
+  const references = useReferenceStrokes(extraReferenceIds);
   const [showModel, setShowModel] = useState(true);
   const [override, setOverride] = useState<Grade | null>(null);
 
@@ -116,11 +117,13 @@ export function FeedbackPanel({
     () =>
       drawn && typeof references === 'object'
         ? checkDrawing(draft.strokes, entry.id, references, {
-            alternateStrokeCount: entry.strokeCount,
+            alternateStrokeCount: entry.strokeCount ?? undefined,
           })
         : null,
     [drawn, draft.strokes, entry.id, entry.strokeCount, references],
   );
+  // No stroke data for this character: no verdict, overlay or suggested grade.
+  const unrecognized = typeof references === 'object' && !references.has(entry.id);
   const suggestion = check === null ? null : suggestedGrade(check);
   const verdict =
     check === null
@@ -148,24 +151,7 @@ export function FeedbackPanel({
       <p className="glyph" lang="ja">
         {entry.literal}
       </p>
-      <dl className="character-facts">
-        <div>
-          <dt>Meanings</dt>
-          <dd>{entry.meanings.join(', ')}</dd>
-        </div>
-        <div>
-          <dt>On readings</dt>
-          <dd lang="ja">{readingsText(entry.onReadings)}</dd>
-        </div>
-        <div>
-          <dt>Kun readings</dt>
-          <dd lang="ja">{readingsText(entry.kunReadings)}</dd>
-        </div>
-        <div>
-          <dt>Strokes</dt>
-          <dd>{String(entry.strokeCount)}</dd>
-        </div>
-      </dl>
+      <CharacterFacts entry={entry} />
 
       <div className="feedback-layout">
         <div>
@@ -219,6 +205,7 @@ export function FeedbackPanel({
               <p>{verdict.detail}</p>
             </div>
           )}
+          {unrecognized ? <UnrecognizedWarning /> : null}
           {drawn && references === 'loading' ? (
             <p className="muted" role="status">
               Checking your drawing…

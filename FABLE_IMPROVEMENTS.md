@@ -7,7 +7,7 @@ This document has four parts:
 1. [Brush-like drawing](#1-brush-like-drawing) — making the pad comfortable to write on. _(Done for mouse and touch. Apple Pencil still draws badly: see [1.9](#19-apple-pencil-on-ipad-follow-up-after-device-testing).)_
 2. [Automatic checking of the drawn kanji](#2-automatic-checking-of-the-drawn-kanji) — how to implement it. _(Done, together with the stroke-order guide from 2.6.)_
 3. [Other improvements](#3-other-improvements) — everything else found during the review.
-4. [Decks: the standard Jōyō deck and custom decks](#4-decks-the-standard-jōyō-deck-and-custom-decks) — planned.
+4. [Decks: the standard Jōyō deck and custom decks](#4-decks-the-standard-jōyō-deck-and-custom-decks). _(Done; see the notes at the top of that section.)_
 
 A suggested order of work is at the [end](#5-suggested-order-of-work).
 
@@ -318,6 +318,13 @@ Once the stroke data is in place, three smaller features cost little:
 
 ## 4. Decks: the standard Jōyō deck and custom decks
 
+> **Implemented.** Differences from the plan below:
+>
+> - **Backup validation (4.9)** does not require every card's character to be in the catalog or a deck. Deleting a deck leaves its cards (4.8), and a backup made afterwards must still import. The import preview reports the number of such cards instead.
+> - **Picking from the Standard deck (4.5, way 3)** is an "Add to deck" control on a character's page. It adds one character directly, without the preview screen.
+> - **Not built:** the optional per-deck daily new limit (4.3, 4.8) and hiding the Standard deck from the switcher (4.12). The global daily limit applies to every deck.
+> - The full KanjiVG set is 6,703 characters in 64 shards of about 13 kB gzipped each.
+
 ### 4.1 Goal
 
 - The 2,136 Jōyō kanji become the **Standard deck**. It is always present and cannot be deleted, renamed or edited.
@@ -461,5 +468,5 @@ Steps 1–5 and the stroke-order animation from step 7 are done. Apple Pencil sm
 | 5     | Checker in the feedback screen with override (2.5)                                | The user-visible feature                                          |
 | 6     | Catalog loading, WOFF2-only fonts, persistent storage, shortcuts (3.2, 3.3, 3.5)  | Small independent items; can be interleaved anywhere after step 1 |
 | 7     | Guided repair, stroke-order animation, component hints, PWA                       | Build on the stroke data and the checker                          |
-| 8     | Decks: Standard deck, custom decks, automatic stroke order (section 4)            | Needs the stroke data; touches storage, sessions and backups      |
+| 8     | Decks: Standard deck, custom decks, automatic stroke order (section 4) — done     | Needs the stroke data; touches storage, sessions and backups      |
 | 9     | Apple Pencil smoothing on iPad (1.9) — do this next                               | Main handwriting device; needs recorded Pencil traces first       |

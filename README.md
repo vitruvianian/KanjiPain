@@ -46,6 +46,18 @@ To study beyond the plan, start an **extra session** from the Dojo or from any s
 
 The Collection searches the whole catalog before pagination, with progress filters and character details/history. **This prompt is ambiguous** pauses the card without an FSRS failure; resume it from character details without moving its due date.
 
+## Decks
+
+Practice uses one deck at a time. Choose it on the Dojo, in Settings, or on the **Decks** page.
+
+- The **Standard deck** is the 2,136 Jōyō kanji. It cannot be renamed, edited or deleted; **Copy to a new deck** gives you an editable copy.
+- **Custom decks** hold any characters with your own meanings, readings, note and mnemonic. Add characters by pasting them (`猫犬鳥`, or one per line), by importing a CSV/TSV file with a header row (`kanji`, `meanings`, `readings`, `note`, `mnemonic`; separate several values with `;`), by importing a deck JSON file exported from KanjiPain, or with **Add to deck** on a Standard character's page. Every import shows a preview first: new characters, characters already in the deck (merged, not added twice), and rows that cannot be used.
+- **Stroke order is added automatically** for the roughly 6,700 characters KanjiVG covers. A character without stroke data is still accepted, with a clear warning: it has no stroke-order guide and no automatic check, so you grade it yourself.
+- An entry needs a meaning or a reading before sessions use it, because a prompt never shows the character itself. A cue that contains the character is rejected.
+- **Progress belongs to the character, not the deck.** Each character has one card and one schedule, shared by every deck that contains it. Sessions, new introductions, due counts and the Collection are limited to the active deck; a card due in another deck stays due. Deleting a deck keeps cards and history; such characters are listed in the Collection under "Characters not in any deck".
+- A deck cannot be edited or deleted while a session is using it. Limits: 50 custom decks, 5,000 characters per deck, 5 MiB per import file.
+- **Export as JSON/CSV** on a deck page shares the entries without any progress.
+
 ## Your data
 
 Progress, settings, history, and active session drafts live in **IndexedDB** (`kanjipain`), scoped to the browser profile and site origin. Completed strokes, hints, and revealed phases survive reloads once saved. Rapid grade clicks are idempotent; stale tabs reload canonical state with a notice rather than overwriting it.
@@ -53,9 +65,9 @@ Progress, settings, history, and active session drafts live in **IndexedDB** (`k
 **Export backups regularly from Settings.** Clearing site data, discarding private browsing, browser eviction, or changing origin can lose access to local progress. There is no server copy or cross-device sync.
 
 - Export/import is available only after finishing the active session.
-- Backups are unencrypted version 1 JSON containing cards, schedules, events, finished sessions, settings, and content issues. They exclude drawings and the static catalog.
-- Import checks the 25 MiB limit, schema, scheduler compatibility, catalog IDs, and record relationships before writing. Preview the counts, optionally export current progress, then explicitly confirm replacement.
-- Import **replaces**, never merges, local progress in one transaction. Invalid files or failed writes leave existing progress intact.
+- Backups are unencrypted version 2 JSON containing cards, schedules, events, finished sessions, settings, content issues, and custom decks. They exclude drawings and the static catalog. Version 1 backups (made before decks existed) still import.
+- Import checks the 25 MiB limit, schema, scheduler compatibility, deck entries, and record relationships before writing. Preview the counts, optionally export current progress, then explicitly confirm replacement.
+- Import **replaces**, never merges, local progress and custom decks in one transaction. Invalid files or failed writes leave existing progress intact.
 
 Local-first does **not** mean installable/offline-first: once app assets and the scheduler have loaded, practice can continue with the network disabled. There is no service worker, guaranteed offline reload/cold start, or PWA installation support.
 
@@ -113,7 +125,7 @@ Publish `dist/` at `/kanjipain/`. Keep the origin stable; moving to another orig
 
 ## Sources and limits
 
-Catalog data is a transformed KANJIDIC2 extract, attributed to **James William Breen and EDRDG**, under **CC BY-SA 4.0**, separate from any application-code license. Stroke data for checking drawings is a transformed KanjiVG extract, © **Ulrich Apel**, under **CC BY-SA 3.0**. Japanese glyphs use bundled **Noto Sans JP**, under **SIL OFL 1.1**. The in-app Sources & licenses page ships the attribution, transformation notice, dates, hashes, and license copies. See [DATA_SOURCES.md](./DATA_SOURCES.md) for provenance and monthly/pre-release maintenance.
+Catalog data is a transformed KANJIDIC2 extract, attributed to **James William Breen and EDRDG**, under **CC BY-SA 4.0**, separate from any application-code license. Stroke data for checking drawings and showing stroke order is a transformed KanjiVG extract (about 6,700 characters, loaded in parts as custom decks need them), © **Ulrich Apel**, under **CC BY-SA 3.0**. Japanese glyphs use bundled **Noto Sans JP**, under **SIL OFL 1.1**. The in-app Sources & licenses page ships the attribution, transformation notice, dates, hashes, and license copies. See [DATA_SOURCES.md](./DATA_SOURCES.md) for provenance and monthly/pre-release maintenance.
 
 The handwriting checker verifies a drawing against the one expected character; it does not recognize arbitrary handwriting, and its thresholds are calibrated on simulated hand error, not yet on collected real handwriting. Version 1 does not provide a full reading/vocabulary curriculum, promise curated mnemonics for every character, sync accounts, or guarantee PWA installation/offline cold starts. Dictionary cues can be ambiguous; use the local pause/resume workflow rather than treating ambiguity as a recall failure. The bundled catalog currently produces a non-fatal Vite chunk-size warning.
 

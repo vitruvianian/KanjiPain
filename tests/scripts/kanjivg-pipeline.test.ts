@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { KanjiEntry } from '../../src/domain/types';
 import {
   buildReferenceStrokes,
+  buildStrokeShards,
   encodeStroke,
   flattenSvgPath,
   parseKanjivgXml,
@@ -84,5 +85,15 @@ describe('KanjiVG pipeline', () => {
       { id: 'k-4e8c', literal: '二', catalog: 3, kanjivg: 2 },
     ]);
     expect(() => buildReferenceStrokes(xml, [entry('三', 3)])).toThrow(/三/);
+  });
+
+  it('splits every KanjiVG character into shards by code point', () => {
+    const build = buildStrokeShards(xml);
+    expect(build.entryCount).toBe(2);
+    expect(build.strokeTotal).toBe(3);
+    // U+4E00 % 64 = 0 and U+4E8C % 64 = 12.
+    expect([...build.shards.keys()]).toEqual(['00', '0c']);
+    expect(build.shards.get('0c')).toEqual({ 'k-4e8c': ['3a4bc74b', '1cbbe1bb'] });
+    expect(Object.keys(build.shards.get('00') ?? {})).toEqual(['k-4e00']);
   });
 });
