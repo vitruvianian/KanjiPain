@@ -265,7 +265,33 @@ export function validateProductionCatalog(
   }
 
   validateTeachingNoteReferences(teachingNotes, byId);
+  validateDistinctMeaningCues(catalog, teachingNotes);
   return catalog;
+}
+
+/**
+ * Two characters must never share a meaning cue: the prompt would point at both, and only
+ * the reading would tell them apart. A teaching-note prompt override separates such pairs.
+ */
+export function validateDistinctMeaningCues(
+  catalog: readonly KanjiEntry[],
+  teachingNotes: z.output<typeof teachingNotesSchema>,
+): void {
+  const seen = new Map<string, string>();
+  const collisions: string[] = [];
+  for (const entry of catalog) {
+    const cue = (
+      teachingNotes[entry.id]?.promptOverride?.meaningCue ?? entry.meanings.slice(0, 3).join(', ')
+    ).toLowerCase();
+    const earlier = seen.get(cue);
+    if (earlier === undefined) seen.set(cue, entry.literal);
+    else collisions.push(`${earlier}/${entry.literal} ("${cue}")`);
+  }
+  if (collisions.length > 0) {
+    throw new Error(
+      `Characters share a meaning cue; add a teaching-note prompt override: ${collisions.join(', ')}.`,
+    );
+  }
 }
 
 function validateTeachingNoteReferences(

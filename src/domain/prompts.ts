@@ -45,14 +45,15 @@ export function buildPrompt(entry: StudyEntry, teachingNote?: TeachingNote): Pro
   if (mnemonic !== undefined) {
     hints.push({ key: 'mnemonic', text: mnemonic });
   }
-  if (teachingNote?.componentHint !== undefined) {
-    hints.push({ key: 'component', text: teachingNote.componentHint });
-  }
+  // The ladder climbs from the least to the most revealing: stroke count, then the parts.
   if (entry.strokeCount !== null) {
     hints.push({
       key: 'stroke-count',
       text: `Stroke count: ${String(entry.strokeCount)}`,
     });
+  }
+  if (teachingNote?.componentHint !== undefined) {
+    hints.push({ key: 'component', text: `Parts — ${teachingNote.componentHint}` });
   }
 
   assertTargetHidden(entry, [meaningCue, ...readingCues, ...hints.map((hint) => hint.text)]);

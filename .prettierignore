@@ -10,3 +10,5 @@ src/data/strokes.generated.json
 public/licenses/
 package-lock.json
 src/data/stroke-shards/
+src/data/component-hints.generated.json
+src/data/lookalikes.generated.json

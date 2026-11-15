@@ -7,7 +7,10 @@ import { z } from 'zod';
 
 import { kanjiEntrySchema } from '../src/domain/schemas';
 import { sha256, stableJson } from './catalog-pipeline';
+import { ReferenceStrokes } from '../src/recognition/reference-data';
 import {
+  buildComponentHints,
+  buildLookalikes,
   buildReferenceStrokes,
   buildStrokeShards,
   KANJIVG_DOWNLOAD_URL,
@@ -21,9 +24,11 @@ const catalogPath = resolve('src/data/kanji.generated.json');
 const strokesOutputPath = resolve('src/data/strokes.generated.json');
 const manifestOutputPath = resolve('src/data/strokes-manifest.json');
 const shardOutputDirectory = resolve('src/data/stroke-shards');
+const componentHintsOutputPath = resolve('src/data/component-hints.generated.json');
+const lookalikesOutputPath = resolve('src/data/lookalikes.generated.json');
 
 /** One character per line keeps the files compact and their diffs reviewable. */
-function strokesFileText(data: Readonly<Record<string, readonly string[]>>): string {
+function strokesFileText(data: Readonly<Record<string, string | readonly string[]>>): string {
   return `{\n${Object.entries(data)
     .map(([id, strokes]) => `${JSON.stringify(id)}:${JSON.stringify(strokes)}`)
     .join(',\n')}\n}\n`;
@@ -72,6 +77,15 @@ export async function importKanjivg(inputPath = defaultInputPath): Promise<void>
   );
   const shardsSha256 = sha256(shardTexts.map(([name, text]) => `${name}\n${text}`).join(''));
 
+  // Derived teaching data: component hints and the characters easily confused with each one.
+  const componentHints = buildComponentHints(xml, catalog);
+  const componentHintsText = strokesFileText(componentHints);
+  const lookalikes = buildLookalikes(
+    new ReferenceStrokes(build.data),
+    catalog.map((entry) => entry.id),
+  );
+  const lookalikesText = strokesFileText(lookalikes);
+
   const manifest = {
     schemaVersion: 1,
     entryCount: Object.keys(build.data).length,
@@ -83,6 +97,14 @@ export async function importKanjivg(inputPath = defaultInputPath): Promise<void>
       entryCount: shardBuild.entryCount,
       strokeTotal: shardBuild.strokeTotal,
       sha256: shardsSha256,
+    },
+    componentHints: {
+      entryCount: Object.keys(componentHints).length,
+      sha256: sha256(componentHintsText),
+    },
+    lookalikes: {
+      entryCount: Object.keys(lookalikes).length,
+      sha256: sha256(lookalikesText),
     },
     source: {
       name: 'KanjiVG',
@@ -97,6 +119,8 @@ export async function importKanjivg(inputPath = defaultInputPath): Promise<void>
   };
 
   await writeAtomically(strokesOutputPath, strokesText);
+  await writeAtomically(componentHintsOutputPath, componentHintsText);
+  await writeAtomically(lookalikesOutputPath, lookalikesText);
   await mkdir(shardOutputDirectory, { recursive: true });
   const expected = new Set<string>(shardTexts.map(([name]) => name));
   for (const name of await readdir(shardOutputDirectory)) {
@@ -109,7 +133,9 @@ export async function importKanjivg(inputPath = defaultInputPath): Promise<void>
   console.log(
     `Imported ${String(manifest.entryCount)} characters (${String(build.strokeTotal)} strokes); ` +
       `${String(build.strokeCountDifferences.length)} differ from the catalog stroke count. ` +
-      `Full set: ${String(shardBuild.entryCount)} characters in ${String(shardTexts.length)} shards.`,
+      `Full set: ${String(shardBuild.entryCount)} characters in ${String(shardTexts.length)} shards. ` +
+      `${String(Object.keys(componentHints).length)} component hints; ` +
+      `${String(Object.keys(lookalikes).length)} characters with look-alikes.`,
   );
 }
 

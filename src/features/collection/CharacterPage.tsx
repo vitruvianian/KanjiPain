@@ -1,3 +1,4 @@
+import { Lookalikes } from '../../components/Lookalikes';
 import { StrokeOrder } from '../../components/StrokeOrder';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -363,6 +364,14 @@ export function CharacterPage() {
       <section className="panel" aria-labelledby="stroke-order-title">
         <h2 id="stroke-order-title">How to write it</h2>
         <StrokeOrder key={kanjiId} kanjiId={kanjiId} literal={literal} />
+        <Lookalikes
+          linked
+          items={catalog.lookalikes(kanjiId).map((id) => ({
+            id,
+            literal: catalog.byId(id)?.literal ?? id,
+            meaning: catalog.byId(id)?.meanings.slice(0, 3).join(', '),
+          }))}
+        />
       </section>
 
       <section className="panel" aria-labelledby="progress-title">

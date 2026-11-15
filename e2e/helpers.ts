@@ -67,6 +67,7 @@ export async function importBackup(page: Page, fixtureName: string): Promise<voi
 
 export async function drawStroke(page: Page): Promise<void> {
   const surface = page.getByRole('img', { name: 'Kanji drawing area' });
+  await surface.scrollIntoViewIfNeeded();
   const bounds = await surface.boundingBox();
   if (bounds === null) {
     throw new Error('Drawing surface is unavailable.');

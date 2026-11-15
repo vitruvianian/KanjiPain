@@ -174,7 +174,7 @@ button {
 .button--primary {
   background: var(--color-accent);
   border-color: var(--color-accent);
-  color: var(--color-ink);
+  color: var(--color-on-accent);
   font-weight: 700;
 }
 button:disabled {
@@ -270,7 +270,7 @@ input[type='checkbox'] {
   border-left-color: var(--color-success);
 }
 .check-verdict--partial {
-  border-left-color: #e0a84a;
+  border-left-color: var(--color-warning);
 }
 .check-verdict--bad {
   border-left-color: var(--color-accent);
@@ -448,6 +448,19 @@ dialog::backdrop {
   font-size: clamp(5rem, 26vw, 11rem);
   line-height: 1;
   text-align: center;
+}
+/* The answer drawn from its strokes, on the same paper as the drawing pad. */
+.glyph--written {
+  display: flex;
+  justify-content: center;
+}
+.glyph__drawing {
+  display: block;
+  width: clamp(7rem, 34vw, 13rem);
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+  background: var(--color-paper);
+  fill: var(--color-ink);
 }
 .character-facts {
   display: grid;
@@ -736,7 +749,7 @@ dialog::backdrop {
   border-top-color: var(--color-success);
 }
 .character-tile--due {
-  background: #2a2320;
+  background: var(--color-due-surface);
   box-shadow: inset 0 0 0 1px var(--color-accent);
 }
 .character-tile--paused {
@@ -1044,4 +1057,60 @@ dialog::backdrop {
   color: var(--color-warning);
   font-size: 0.65rem;
   line-height: 1.25;
+}
+kbd {
+  padding: 0 0.35em;
+  border: 1px solid var(--color-border);
+  border-bottom-width: 2px;
+  border-radius: 0.3em;
+  font: inherit;
+  font-size: 0.85em;
+}
+/* Keyboard shortcuts are for devices with a keyboard and a precise pointer. */
+@media (hover: none), (pointer: coarse) {
+  .shortcut-hint {
+    display: none;
+  }
+}
+.backup-status {
+  margin-top: var(--space-4);
+}
+.backup-status .banner {
+  margin-bottom: var(--space-3);
+}
+.backup-status > p {
+  margin: 0;
+}
+.persistence {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+.lookalikes {
+  margin: 0 0 var(--space-4);
+}
+.lookalikes h2,
+.lookalikes h3 {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: 1rem;
+}
+.lookalikes ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lookalikes li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.lookalikes__glyph {
+  font-size: 2rem;
+  line-height: 1.2;
+}
+.lookalikes a {
+  text-decoration: none;
 }

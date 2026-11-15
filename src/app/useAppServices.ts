@@ -12,6 +12,7 @@ import type {
   SettingsRecord,
   UnixMs,
 } from '../domain/types';
+import type { BackupStatus } from '../services/backup-service';
 import type { DeckContent } from '../services/deck-content';
 import type { DeckListItem } from '../services/deck-service';
 import { AppServicesContext, type AppServices } from './app-services-context';
@@ -135,4 +136,9 @@ export function useDeckEntriesForKanji(kanjiId: KanjiId): DeckEntryRecord[] | un
 export function useCustomKanjiIds(): Set<KanjiId> | undefined {
   const { decks } = useAppServices();
   return useStorageQuery(() => decks.getCustomKanjiIds(), [decks]);
+}
+
+export function useBackupStatus(): BackupStatus | undefined {
+  const { backup } = useAppServices();
+  return useStorageQuery(() => backup.getStatus(), [backup]);
 }

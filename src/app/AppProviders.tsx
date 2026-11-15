@@ -26,7 +26,7 @@ interface AppProvidersProps {
   children: ReactNode;
   databaseName?: string;
   databaseFactory?: (name: string) => KanjiPainDatabase;
-  catalogLoader?: () => CatalogRepository;
+  catalogLoader?: () => CatalogRepository | Promise<CatalogRepository>;
 }
 
 interface StartupAttemptProps extends Omit<AppProvidersProps, 'databaseName'> {
@@ -61,8 +61,8 @@ function StartupAttempt({
 
     const start = async () => {
       try {
-        const catalog = catalogLoader();
-        const [, scheduler] = await Promise.all([
+        const [catalog, , scheduler] = await Promise.all([
+          catalogLoader(),
           initializeDatabase(database),
           initializeFsrsAdapter(),
         ]);

@@ -20,5 +20,5 @@
     "skipLibCheck": true,
     "types": ["node", "vitest/globals", "@testing-library/jest-dom", "vite/client"]
   },
-  "include": ["tests/**/*.ts", "tests/**/*.tsx", "e2e/**/*.ts"]
+  "include": ["tests/**/*.ts", "tests/**/*.tsx", "e2e/**/*.ts", "vite-plugins.ts"]
 }

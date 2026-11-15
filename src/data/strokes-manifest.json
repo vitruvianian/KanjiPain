@@ -65,6 +65,14 @@
     "strokeTotal": 79921,
     "sha256": "6105cfe1870739578a8690c1878daa2a23f19ffb67d683d7b00a6213d5b62b8e"
   },
+  "componentHints": {
+    "entryCount": 1940,
+    "sha256": "065a54bf3a81e5acfe8bccd1a213741283b13b43ba2e43fb1c1a2bde25682e50"
+  },
+  "lookalikes": {
+    "entryCount": 594,
+    "sha256": "87f90f0c531c88a50ed516d09538db18610ffdfaf388784ab828c95ceba617dd"
+  },
   "source": {
     "name": "KanjiVG",
     "release": "r20260714",

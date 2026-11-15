@@ -1,3 +1,4 @@
+import { useKeyboardShortcuts } from '../../app/useKeyboardShortcuts';
 import { Button } from '../../components/Button';
 
 interface ShortRematchPanelProps {
@@ -7,6 +8,7 @@ interface ShortRematchPanelProps {
 }
 
 export function ShortRematchPanel({ busy, onAccept, onFinish }: ShortRematchPanelProps) {
+  useKeyboardShortcuts({ enter: busy ? undefined : onAccept });
   return (
     <section className="exercise-panel" aria-labelledby="short-rematch-title">
       <p className="eyebrow">Keep it close</p>
@@ -17,7 +19,7 @@ export function ShortRematchPanel({ busy, onAccept, onFinish }: ShortRematchPane
       </p>
       <p>Practice it now, or finish and let a later session bring it back.</p>
       <div className="button-row">
-        <Button variant="primary" disabled={busy} onClick={onAccept}>
+        <Button variant="primary" disabled={busy} onClick={onAccept} aria-keyshortcuts="Enter">
           Practice it now
         </Button>
         <Button disabled={busy} onClick={onFinish}>

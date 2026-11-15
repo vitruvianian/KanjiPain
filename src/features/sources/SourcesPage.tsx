@@ -150,6 +150,14 @@ export function SourcesPage() {
           KanjiVG release. It is distributed under <strong>{strokesManifest.source.license}</strong>
           .
         </p>
+        <p>
+          The same data, adapted, draws answers in handwriting style and the app icon.
+          KanjiVG&apos;s component grouping gives the{' '}
+          {strokesManifest.componentHints.entryCount.toLocaleString()} generated component hints,
+          and its stroke shapes give the list of easily confused characters (
+          {strokesManifest.lookalikes.entryCount.toLocaleString()} characters with at least one
+          look-alike). These adaptations are also under CC BY-SA 3.0.
+        </p>
         <ul className="source-links">
           <li>{externalLink(strokesManifest.source.projectUrl, 'KanjiVG project')}</li>
           <li>

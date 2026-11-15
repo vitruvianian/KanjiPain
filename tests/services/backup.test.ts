@@ -2,6 +2,7 @@ import Dexie from 'dexie';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  BACKUP_REMINDER_REVIEWS,
   BackupActiveSessionError,
   BackupTooLargeError,
   BackupValidationError,
@@ -463,5 +464,72 @@ describe('backup service', () => {
     await expect(backup.previewImport(JSON.stringify(standard))).rejects.toThrow(
       /Standard deck is not stored/i,
     );
+  });
+
+  it('tracks the last backup and suggests another after enough reviews', async () => {
+    const harness = await createHarness(databaseName('status'));
+    const backup = createBackupService(harness);
+    const addReviews = async (count: number, kind = 'scheduled') => {
+      const base = harness.clock.now();
+      await harness.database.events.bulkAdd(
+        Array.from({ length: count }, (_, index) => ({
+          id: `event-${String(base)}-${kind}-${String(index)}`,
+          kind,
+          occurredAt: base + 1 + index,
+        })) as never[],
+      );
+      harness.clock.value = base + count;
+    };
+
+    expect(await backup.getStatus()).toEqual({
+      lastExportAt: null,
+      reviewsSinceExport: 0,
+      reminderDue: false,
+    });
+    await addReviews(BACKUP_REMINDER_REVIEWS - 1);
+    await addReviews(5, 'rematch');
+    expect((await backup.getStatus()).reminderDue).toBe(false);
+    await addReviews(1);
+    expect(await backup.getStatus()).toMatchObject({
+      lastExportAt: null,
+      reviewsSinceExport: BACKUP_REMINDER_REVIEWS,
+      reminderDue: true,
+    });
+
+    // Dismissing waits for another round of reviews.
+    await backup.dismissReminder();
+    expect((await backup.getStatus()).reminderDue).toBe(false);
+    await addReviews(BACKUP_REMINDER_REVIEWS);
+    expect(await backup.getStatus()).toMatchObject({
+      reviewsSinceExport: 2 * BACKUP_REMINDER_REVIEWS,
+      reminderDue: true,
+    });
+
+    // Exporting resets the count. Events are fake here, so stub the snapshot.
+    const exportedAt = harness.clock.now();
+    vi.spyOn(backup, 'createExport').mockResolvedValue({ exportedAt } as never);
+    await backup.exportJson();
+    expect(await backup.getStatus()).toEqual({
+      lastExportAt: exportedAt,
+      reviewsSinceExport: 0,
+      reminderDue: false,
+    });
+  });
+
+  it('counts a restored backup as backed up when it was made', async () => {
+    const source = await createHarness(databaseName('status-source'));
+    await completeNewCardSession(source, catalogEntry(0));
+    const exported = await createBackupService(source).exportJson();
+    const exportedAt = parseObject(exported).exportedAt;
+
+    const target = await createHarness(databaseName('status-target'));
+    const backup = createBackupService(target);
+    await backup.dismissReminder();
+    await backup.replaceWithImport(exported);
+    expect(await backup.getStatus()).toEqual({
+      lastExportAt: exportedAt,
+      reviewsSinceExport: 0,
+      reminderDue: false,
+    });
   });
 });

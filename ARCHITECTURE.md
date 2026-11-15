@@ -54,10 +54,14 @@ FSRS estimates scheduling needs; it does not measure a person's memory directly.
 ### Later releases: preserve the concept without blocking version 1
 
 1. Curated vocabulary prompts and separate contextual reading/meaning cards.
-2. Reviewed component breakdowns, mnemonics, and stroke-order diagrams.
-3. Deliberate contrast drills for confusable forms such as 未 and 末.
-4. Installable PWA with offline cold starts and explicit update handling.
-5. Optional handwriting recognition with user override.
+2. Reviewed component breakdowns, mnemonics, and stroke-order diagrams. (Stroke-order
+   diagrams and generated component hints exist; reviewed breakdowns do not.)
+3. Deliberate contrast drills for confusable forms such as 未 and 末. (Done: a
+   "look-alike pairs" extra session from a generated look-alike list.)
+4. Installable PWA with offline cold starts and explicit update handling. (Done: a
+   generated service worker and web manifest; the page is fetched network-first.)
+5. Optional handwriting recognition with user override. (Done as verification
+   against the expected character, see `src/recognition/`.)
 6. Optional accounts, cross-device synchronization, and placement assessment.
 
 Version 1 checks drawn characters against the expected form, including stroke
@@ -126,13 +130,17 @@ maps to a unique kanji. See the ambiguity policy in section 6.
 The hint button traverses only hints that exist:
 
 1. Reviewed mnemonic cue, if supplied.
-2. Reviewed component cue, if supplied.
-3. Stroke count, available from the catalog.
+2. Stroke count, available from the catalog.
+3. Component cue: a reviewed one if supplied, otherwise one generated from
+   KanjiVG's component grouping ("Left: water · Right: every"). Parts are named by
+   position, with the component's English name where one is known and its stroke
+   count otherwise. About 1,940 of the 2,136 characters have one.
 4. Full answer reveal.
 
 Never generate a component explanation from the dictionary radical number. A
-dictionary indexing radical is not a full structural decomposition. Never invent
-etymology. With no curated notes, the ladder starts at stroke count.
+dictionary indexing radical is not a full structural decomposition; KanjiVG's
+grouping is. Never invent etymology. The ladder climbs from the least revealing
+hint to the most.
 
 Any requested hint sets `assisted = true` for that attempt. The default reading
 cues are part of the question and do not count as assistance. Revealing after a
@@ -140,8 +148,16 @@ submitted attempt is normal feedback and does not retroactively mark it assisted
 
 ### 3.5 Feedback and self-grading
 
-Show the frozen drawing beside a large Japanese-font target glyph. In paper mode,
-show the target and the instruction to compare with the paper attempt.
+Show the frozen drawing beside the target, drawn from its KanjiVG strokes with the
+drawing pad's brush: print fonts form several characters differently from
+handwriting (令, 心, 糸, 北, 入). Characters without stroke data fall back to the
+Japanese font. In paper mode, show the target and the instruction to compare with
+the paper attempt. Characters whose written shapes are easily confused with the
+target (a generated look-alike list, see 6) are shown beside it.
+
+Desktop shortcuts: `1`/`2`/`3` grade, `Enter` compares or continues, `H` asks for
+a hint, `Escape` cancels a grade override. They are ignored while typing, with
+modifier keys, and while a modal dialog is open, and hidden on touch devices.
 
 | Button    | Meaning                            | Scheduler rating |
 | --------- | ---------------------------------- | ---------------- |
@@ -194,9 +210,14 @@ characters consume no introduction slots.
 
 ### Identity
 
-- Background `#141414`, surfaces `#20201E`, text `#F3F0E8`, muted text `#BCB7AB`.
-- Vermilion accent `#E87861`; success accent `#8FB9A2`.
-- Drawing paper `#F5F0E5`; ink `#1D1C19`.
+- Dark palette (default): background `#141414`, surfaces `#20201E`, text `#F3F0E8`,
+  muted text `#BCB7AB`, vermilion accent `#E87861`, success accent `#8FB9A2`.
+- Light palette: background `#F7F4EE`, surfaces `#FFFFFF`, text `#1D1C19`, muted
+  `#5C574D`, accent `#B23F28` with white button text, success `#2E6B4F`. It follows
+  `prefers-color-scheme` unless Settings overrides it; the choice is a per-device
+  `localStorage` value applied by `index.html` before first paint
+  (`src/app/theme.ts`).
+- Drawing paper `#F5F0E5`; ink `#1D1C19`, in both themes.
 - Use system UI fonts for English. Bundle a Japanese font such as Noto Sans JP
   using a package with its OFL license, and apply `lang="ja"` to Japanese text.
 - Four/eight-pixel spacing rhythm, generous whitespace, modest rounded corners.
@@ -204,7 +225,7 @@ characters consume no introduction slots.
   error animation. Respect reduced-motion preferences.
 
 Check actual text/background contrast; token choices are not a substitute for
-accessibility testing. Use dark text on a filled vermilion button.
+accessibility testing. Use dark text on a filled vermilion button in the dark theme, white in the light.
 
 ### Screens
 
@@ -266,7 +287,7 @@ does not enroll it or update scheduling.
 | Drawing                    | SVG brush outlines (perfect-freehand 1.2.3)    | Stored centreline points; variable-width ink derived on draw  |
 | Handwriting check          | Geometric stroke matching against KanjiVG      | Offline, deterministic, explains errors; learner can override |
 | Unit/integration tests     | Vitest, Testing Library, fake-indexeddb        | Deterministic domain/storage coverage                         |
-| Browser tests              | Playwright, Chromium initially                 | Verify actual drawing, reloads, and IndexedDB behavior        |
+| Browser tests              | Playwright: Chromium; WebKit for practice      | Verify actual drawing, reloads, and IndexedDB behavior        |
 | Code quality               | ESLint flat config + Prettier + TypeScript     | Explicit repeatable checks                                    |
 | Hosting                    | Static `dist/` on any HTTPS static host        | No server or recurring API costs required                     |
 | Data tooling               | Node scripts via tsx + fast-xml-parser         | Convert KANJIDIC2 once during content maintenance             |
@@ -280,8 +301,16 @@ There is no backend, authentication, global state library, analytics service,
 remote LLM, or neural handwriting model in version 1. Drawn attempts are verified
 locally against bundled reference strokes (`src/recognition/`); the verdict only
 suggests a grade. Local-first means progress is local
-and practice works without network requests once the app has loaded. Offline
-reload/install support is a separate PWA milestone, not a version 1 promise.
+and practice works without network requests once the app has loaded.
+
+The production build also emits `sw.js` and a web manifest (`vite-plugins.ts`,
+`public/manifest.webmanifest`). The service worker precaches the app shell, the
+catalog chunk and the Jōyō stroke data, so the app starts with no network once it
+has been opened over HTTPS; stroke-data shards for custom decks, font subsets and
+license pages are cached as they are first fetched. The page itself is fetched
+network-first, so a new deployment shows up on the next online visit. The catalog
+loads as its own chunk alongside database startup and is not schema-validated at
+runtime: the build validates it and checks its SHA-256. Fonts ship as WOFF2 only.
 
 ## 6. Catalog and content pipeline
 
@@ -311,7 +340,9 @@ ordering while deduplicating. Preserve reading punctuation such as `た.べる` 
 ```text
 src/data/kanji.generated.json       # complete normalized catalog, stable order
 src/data/catalog-manifest.json      # source/date/hash/schema/license metadata
-src/data/teaching-notes.json        # optional reviewed hints/overrides, initially {}
+src/data/teaching-notes.json        # reviewed hints/overrides (prompt overrides for 3 cue pairs)
+src/data/component-hints.generated.json  # KanjiVG component hints, by kanji ID
+src/data/lookalikes.generated.json  # characters easily confused with each one
 public/licenses/                   # source documentation/license and font notices
 scripts/import-kanjidic.ts
 scripts/validate-catalog.ts
@@ -748,8 +779,8 @@ compatibility decision. Never reset the database to resolve a migration error.
   after recovery, never silently advance.
 - No due cards/new limit zero: quiet completed state, collection link.
 - Invalid character/session URL: explicit not-found state.
-- Host unavailable before initial load: normal browser behavior; v1 has no offline
-  cold-start guarantee.
+- Host unavailable before initial load: the service worker serves the cached app
+  after the first visit over HTTPS; on a first visit, normal browser behavior.
 
 ## 11. Development rules
 

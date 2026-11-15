@@ -126,3 +126,30 @@ describe('sessions in a custom deck', () => {
     expect(resumed.deckId).toBe(deck.id);
   });
 });
+
+describe('contrast drills', () => {
+  it('drills learned look-alikes back to back, due or not, and records the mode', async () => {
+    const name = `services-session-contrast-${crypto.randomUUID()}`;
+    const entries = [catalogEntry(0), catalogEntry(1), catalogEntry(2), catalogEntry(3)];
+    const current = await createHarness(name, entries, {
+      'k-4e00': ['k-4e02'],
+      'k-4e02': ['k-4e00'],
+      'k-4e01': ['k-4e03'],
+      'k-4e03': ['k-4e01'],
+    });
+    databases.push({ name, database: current.database });
+    // 一 and 丂 are not due yet; 丁 is due, but its look-alike 七 is not learned.
+    await current.database.cards.bulkPut([
+      dueCard(catalogEntry(0), { dueAt: NOW + 86_400_000 }),
+      dueCard(catalogEntry(2), { dueAt: NOW + 2 * 86_400_000 }),
+      dueCard(catalogEntry(1)),
+    ]);
+
+    const session = await current.sessions.startOrResumeSession('contrast');
+    expect(session.mode).toBe('contrast');
+    expect(session.primaryItems.map((item) => [item.kanjiId, item.origin])).toEqual([
+      ['k-4e00', 'due'],
+      ['k-4e02', 'due'],
+    ]);
+  });
+});

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 
-import { useActiveDeck, useAllCards } from '../../app/useAppServices';
-import { EXTRA_NEW_COUNT, PRIMARY_SESSION_LIMIT } from '../../domain/queue';
+import { useActiveDeck, useAllCards, useAppServices } from '../../app/useAppServices';
+import { EXTRA_NEW_COUNT, PRIMARY_SESSION_LIMIT, planContrastPairs } from '../../domain/queue';
 
 interface ExtraPracticeProps {
   /** Heading level to fit the page it is placed on. */
@@ -13,6 +13,7 @@ interface ExtraPracticeProps {
  * again as soon as it ends, as many times as the learner wants.
  */
 export function ExtraPractice({ headingLevel = 2 }: ExtraPracticeProps) {
+  const { catalog } = useAppServices();
   const deck = useActiveDeck();
   const cards = useAllCards();
   if (cards === undefined || deck === undefined) return null;
@@ -25,6 +26,9 @@ export function ExtraPractice({ headingLevel = 2 }: ExtraPracticeProps) {
   const Heading = headingLevel === 2 ? 'h2' : 'h3';
   const newBatch = Math.min(EXTRA_NEW_COUNT, unseen);
   const reviewBatch = Math.min(PRIMARY_SESSION_LIMIT, learned);
+  const contrastPairs = planContrastPairs(cards, deck.practicable, (id) =>
+    catalog.lookalikes(id),
+  ).length;
 
   return (
     <section className="extra-practice" aria-labelledby="extra-practice-title">
@@ -45,12 +49,23 @@ export function ExtraPractice({ headingLevel = 2 }: ExtraPracticeProps) {
             ahead
           </Link>
         )}
+        {contrastPairs === 0 ? null : (
+          <Link className="button" to="/practice?mode=contrast">
+            Drill {String(contrastPairs)} look-alike {contrastPairs === 1 ? 'pair' : 'pairs'}
+          </Link>
+        )}
       </div>
       {reviewBatch === 0 ? null : (
         <p className="muted">
           Reviewing ahead picks the characters due soonest, even if they are not due yet, and
           updates their schedule. An early review counts for less than one on time, so the next
           interval grows less.
+        </p>
+      )}
+      {contrastPairs === 0 ? null : (
+        <p className="muted">
+          A contrast drill asks for learned characters that are easily confused, such as 未 and 末,
+          one straight after the other. Like reviewing ahead, it updates their schedule.
         </p>
       )}
     </section>

@@ -48,10 +48,13 @@ test('normalized drawing retains proportions at 360px without page overflow', as
     x: number;
     y: number;
   }[][];
-  expect(saved[0]?.map(({ x, y }) => [x, y])).toEqual([
-    [0.25, 0.25],
-    [0.75, 0.75],
-  ]);
+  // Browsers may round the pointer to whole pixels.
+  const points = saved[0] ?? [];
+  expect(points).toHaveLength(2);
+  [0.25, 0.75].forEach((expected, index) => {
+    expect(points[index]?.x).toBeCloseTo(expected, 2);
+    expect(points[index]?.y).toBeCloseTo(expected, 2);
+  });
   const outline = await path.getAttribute('d');
   expect(outline).toMatch(/^M[\d.]+ [\d.]+ Q.+Z$/);
   await page.setViewportSize({ width: 360, height: 800 });
@@ -65,7 +68,12 @@ test('normalized drawing retains proportions at 360px without page overflow', as
 test('touch capture suppresses canvas scrolling and cancellation discards only the partial stroke', async ({
   page,
   context,
+  browserName,
 }) => {
+  test.skip(
+    browserName !== 'chromium',
+    'Synthesizes touch and pen input through the Chrome DevTools Protocol.',
+  );
   await page.setViewportSize({ width: 360, height: 500 });
   const bounds = await surfaceBounds(page);
   const cdp = await context.newCDPSession(page);
@@ -89,7 +97,15 @@ test('touch capture suppresses canvas scrolling and cancellation discards only t
   await expect(page.locator('svg path')).toHaveCount(1);
 });
 
-test('pen pointer drawing uses the same captured stroke path', async ({ page, context }) => {
+test('pen pointer drawing uses the same captured stroke path', async ({
+  page,
+  context,
+  browserName,
+}) => {
+  test.skip(
+    browserName !== 'chromium',
+    'Synthesizes touch and pen input through the Chrome DevTools Protocol.',
+  );
   const bounds = await surfaceBounds(page);
   const cdp = await context.newCDPSession(page);
   const position = { x: bounds.x + 60, y: bounds.y + 60, pointerType: 'pen' as const };
@@ -116,7 +132,15 @@ test('pen pointer drawing uses the same captured stroke path', async ({ page, co
   await expect(page.getByTestId('completed-strokes').locator('path')).toHaveCount(1);
 });
 
-test('ignores a second touch while one stroke owns pointer capture', async ({ page, context }) => {
+test('ignores a second touch while one stroke owns pointer capture', async ({
+  page,
+  context,
+  browserName,
+}) => {
+  test.skip(
+    browserName !== 'chromium',
+    'Synthesizes touch and pen input through the Chrome DevTools Protocol.',
+  );
   const bounds = await surfaceBounds(page);
   const cdp = await context.newCDPSession(page);
   const first = { x: bounds.x + 40, y: bounds.y + 40, id: 1 };
@@ -158,7 +182,12 @@ test('bounds committed gestures at 100 strokes and 20,000 points', async ({ page
 
 test('paper mode and modal dialog work with the keyboard, restoring focus on Escape', async ({
   page,
+  browserName,
 }) => {
+  test.skip(
+    browserName === 'webkit',
+    'WebKit on macOS skips buttons and checkboxes when tabbing by default.',
+  );
   await page.keyboard.press('Tab');
   await expect(page.getByRole('checkbox', { name: 'Paper mode', exact: true })).toBeFocused();
   await page.keyboard.press('Space');

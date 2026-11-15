@@ -50,7 +50,7 @@ interface FixtureHarness {
 }
 
 async function createHarness(name: string): Promise<FixtureHarness> {
-  const catalog = loadBundledCatalog();
+  const catalog = await loadBundledCatalog();
   const scheduler = await initializeFsrsAdapter();
   const database = createDatabase(name);
   await initializeDatabase(database);
