@@ -80,7 +80,7 @@ describe('custom decks', () => {
     await user.click(within(preview).getByRole('button', { name: 'Add 2 characters' }));
 
     expect(await screen.findByText('Import saved: 2 added, 0 merged.')).toBeInTheDocument();
-    expect(screen.getByText(/1 character without stroke data/)).toBeInTheDocument();
+    expect(await screen.findByText(/1 character without stroke data/)).toBeInTheDocument();
     expect(screen.getByText(/2 characters need a meaning or reading/)).toBeInTheDocument();
 
     // A cue that gives the answer away is refused; a real one makes the entry practicable.
