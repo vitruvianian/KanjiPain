@@ -1,1 +1,59 @@
-{}
+{
+  "k-5ac9": {
+    "promptOverride": {
+      "meaningCue": "envy, resentment",
+      "readingCues": ["そね.む", "ねた.む", "にく.む", "シツ"]
+    },
+    "source": "Distinct meaning cue: separates 嫉 from 妬, which shares its dictionary meanings",
+    "reviewer": "Drafted by Claude Code; awaiting maintainer review"
+  },
+  "k-59ac": {
+    "promptOverride": {
+      "meaningCue": "jealousy, begrudge",
+      "readingCues": ["ねた.む", "そね.む", "つも.る", "ふさ.ぐ", "ト", "ツ"]
+    },
+    "source": "Distinct meaning cue: separates 妬 from 嫉, which shares its dictionary meanings",
+    "reviewer": "Drafted by Claude Code; awaiting maintainer review"
+  },
+  "k-6349": {
+    "promptOverride": {
+      "meaningCue": "grasp, seize (an idea or moment)",
+      "readingCues": ["とら.える", "ソク", "サク"]
+    },
+    "source": "Distinct meaning cue: separates 捉 from 捕, which shares its dictionary meanings",
+    "reviewer": "Drafted by Claude Code; awaiting maintainer review"
+  },
+  "k-6355": {
+    "promptOverride": {
+      "meaningCue": "catch, capture, arrest",
+      "readingCues": [
+        "と.らえる",
+        "と.らわれる",
+        "と.る",
+        "とら.える",
+        "とら.われる",
+        "つか.まえる",
+        "つか.まる",
+        "ホ"
+      ]
+    },
+    "source": "Distinct meaning cue: separates 捕 from 捉, which shares its dictionary meanings",
+    "reviewer": "Drafted by Claude Code; awaiting maintainer review"
+  },
+  "k-6c99": {
+    "promptOverride": {
+      "meaningCue": "sand, sandbank (by water)",
+      "readingCues": ["すな", "よなげる", "サ", "シャ"]
+    },
+    "source": "Distinct meaning cue: separates 沙 from 砂, which shares its dictionary meanings",
+    "reviewer": "Drafted by Claude Code; awaiting maintainer review"
+  },
+  "k-7802": {
+    "promptOverride": {
+      "meaningCue": "sand, grit",
+      "readingCues": ["すな", "サ", "シャ"]
+    },
+    "source": "Distinct meaning cue: separates 砂 from 沙, which shares its dictionary meanings",
+    "reviewer": "Drafted by Claude Code; awaiting maintainer review"
+  }
+}

@@ -45,7 +45,7 @@ describe('AppProviders', () => {
   });
 
   it('shows a blocking catalog error and retries startup', async () => {
-    const catalog = loadBundledCatalog();
+    const catalog = await loadBundledCatalog();
     let attempts = 0;
     const catalogLoader = () => {
       attempts += 1;

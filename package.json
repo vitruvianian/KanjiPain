@@ -28,6 +28,7 @@
     "strokes:import": "tsx scripts/import-kanjivg.ts",
     "checker:selftest": "tsx scripts/checker-selftest.ts",
     "e2e:fixtures": "tsx scripts/generate-e2e-fixtures.ts",
+    "icons:generate": "tsx scripts/generate-icons.ts",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run data:validate && npm run test"
   },
   "dependencies": {

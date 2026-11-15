@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { Button } from '../../components/Button';
+import { requestPersistence } from '../../app/storage-persistence';
 import { useAppServices } from '../../app/useAppServices';
 
 export function Onboarding() {
@@ -12,6 +13,9 @@ export function Onboarding() {
     setBusy(true);
     setError(null);
     try {
+      // Ask the browser to keep progress through storage clean-ups. It may decide on its
+      // own or ask the learner; either way the answer is shown in Settings.
+      void requestPersistence();
       await settings.update({ onboardingCompleted: true });
     } catch (caught) {
       setError(
@@ -39,8 +43,8 @@ export function Onboarding() {
             your attempt with the answer. You can draw on screen or use paper beside the screen.
           </p>
           <p className="muted">
-            The app cannot grade handwriting. You judge each attempt honestly: got it, barely, or
-            missed it.
+            The app checks drawn characters and suggests a grade, but the grade is yours: got it,
+            barely, or missed it.
           </p>
         </section>
 
@@ -64,8 +68,9 @@ export function Onboarding() {
             account and no server copy.
           </p>
           <p className="muted">
-            Clearing site data removes your progress. Portable progress and backup tools live in
-            Settings; drawings are never included in a backup.
+            Clearing site data removes your progress. Entering the Dojo asks your browser to keep
+            this site&apos;s data; some browsers show a prompt. Backup tools live in Settings;
+            drawings are never included in a backup.
           </p>
         </section>
       </div>

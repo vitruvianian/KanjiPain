@@ -79,7 +79,11 @@ function SummaryContent({ sessionId }: { sessionId: string }) {
     <section className="panel" aria-labelledby="summary-title">
       <p className="eyebrow">
         {session.status === 'completed' ? 'Session complete' : 'Partial session'}
-        {session.mode === undefined ? '' : ' · extra session'}
+        {session.mode === undefined
+          ? ''
+          : session.mode === 'contrast'
+            ? ' · contrast drill'
+            : ' · extra session'}
       </p>
       <h1 id="summary-title">Session summary</h1>
       {session.status === 'ended' ? (

@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+import { useKeyboardShortcuts } from '../../app/useKeyboardShortcuts';
+import { AnswerGlyph } from '../../components/AnswerGlyph';
 import { Button } from '../../components/Button';
 import { DrawingPad } from '../../components/DrawingPad';
 import { StrokeOrder } from '../../components/StrokeOrder';
@@ -18,6 +20,7 @@ interface RepairPanelProps {
 export function RepairPanel({ phase, entry, busy, onSaveDraft, onFinishRepair }: RepairPanelProps) {
   const [strokes, setStrokes] = useState<Stroke[]>(phase.practiceStrokes);
   const readings = entry.readings ?? entry.onReadings;
+  useKeyboardShortcuts({ enter: busy ? undefined : onFinishRepair });
 
   return (
     <section className="exercise-panel" aria-labelledby="repair-title">
@@ -52,9 +55,7 @@ export function RepairPanel({ phase, entry, busy, onSaveDraft, onFinishRepair }:
         </>
       ) : (
         <>
-          <p className="glyph" lang="ja">
-            {entry.literal}
-          </p>
+          <AnswerGlyph kanjiId={entry.id} literal={entry.literal} />
           <p>
             {entry.meanings.join(', ')}
             {entry.meanings.length > 0 && readings.length > 0 ? ' · ' : null}
@@ -76,6 +77,7 @@ export function RepairPanel({ phase, entry, busy, onSaveDraft, onFinishRepair }:
         <Button
           variant="primary"
           disabled={busy}
+          aria-keyshortcuts="Enter"
           onClick={() => {
             onFinishRepair();
           }}

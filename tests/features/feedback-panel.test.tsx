@@ -9,7 +9,7 @@ import { loadBundledCatalog } from '../../src/services/catalog';
 
 afterEach(cleanup);
 
-const catalog = loadBundledCatalog();
+const catalog = await loadBundledCatalog();
 const one = (() => {
   const entry = catalog.byId('k-4e00');
   if (entry === undefined) throw new Error('一 is missing from the catalog.');
@@ -175,5 +175,50 @@ describe('FeedbackPanel handwriting check', () => {
     expect(await screen.findByText('The stroke count is off.')).toBeInTheDocument();
     expect(screen.getByText(/鷲 has 23/)).toBeInTheDocument();
     expect(screen.queryByText(/Not recognized/)).not.toBeInTheDocument();
+  });
+});
+
+describe('FeedbackPanel keyboard and look-alikes', () => {
+  it('grades with 1, 2 and 3, and Escape cancels an override', async () => {
+    const user = userEvent.setup();
+    const onGrade = renderPanel(phase(vertical));
+    await screen.findByText('This does not match 一.');
+
+    await user.keyboard('1');
+    expect(onGrade).not.toHaveBeenCalled();
+    expect(screen.getByRole('alertdialog', { name: 'Confirm grade' })).toBeInTheDocument();
+    // Grade keys wait while the override question is open.
+    await user.keyboard('2');
+    expect(onGrade).not.toHaveBeenCalled();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    await user.keyboard('3');
+    expect(onGrade).toHaveBeenCalledExactlyOnceWith('missed', 'mismatch');
+  });
+
+  it('grades an accepted drawing from the keyboard', async () => {
+    const user = userEvent.setup();
+    const onGrade = renderPanel(phase(horizontal));
+    await screen.findByText('This matches 一.');
+    await user.keyboard('2');
+    expect(onGrade).toHaveBeenCalledExactlyOnceWith('barely', 'match');
+  });
+
+  it('shows the answer drawn from its strokes, and look-alikes to compare', async () => {
+    render(
+      <FeedbackPanel
+        phase={phase([], 'paper')}
+        entry={one}
+        busy={false}
+        lookalikes={[{ id: 'k-4e8c', literal: '二', meaning: 'two' }]}
+        literalOf={(id) => catalog.byId(id)?.literal}
+        onGrade={vi.fn()}
+        onFlagAmbiguous={vi.fn()}
+      />,
+    );
+    expect(await screen.findByTestId('answer-glyph')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Don.t confuse it with/ })).toBeInTheDocument();
+    expect(screen.getByText('二')).toBeInTheDocument();
+    expect(screen.getByText('two')).toBeInTheDocument();
   });
 });

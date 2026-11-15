@@ -2,13 +2,18 @@ import { describe, expect, it } from 'vitest';
 
 import type { KanjiEntry } from '../../src/domain/types';
 import {
+  buildComponentHints,
+  buildLookalikes,
   buildReferenceStrokes,
   buildStrokeShards,
+  componentHint,
   encodeStroke,
   flattenSvgPath,
+  parseKanjivgComponents,
   parseKanjivgXml,
   simplifyPolyline,
 } from '../../scripts/kanjivg-pipeline';
+import { ReferenceStrokes } from '../../src/recognition/reference-data';
 
 const xml = `<kanjivg>
 <kanji id="kvg:kanji_04e00">
@@ -95,5 +100,78 @@ describe('KanjiVG pipeline', () => {
     expect([...build.shards.keys()]).toEqual(['00', '0c']);
     expect(build.shards.get('0c')).toEqual({ 'k-4e8c': ['3a4bc74b', '1cbbe1bb'] });
     expect(Object.keys(build.shards.get('00') ?? {})).toEqual(['k-4e00']);
+  });
+
+  const componentXml = `<kanjivg>
+<kanji id="kvg:kanji_06d77">
+<g id="kvg:06d77" kvg:element="海">
+	<g id="kvg:06d77-g1" kvg:element="氵" kvg:original="水" kvg:position="left">
+		<path id="kvg:06d77-s1" d="M1,1L2,2"/><path id="kvg:06d77-s2" d="M1,1L2,2"/><path id="kvg:06d77-s3" d="M1,1L2,2"/>
+	</g>
+	<g id="kvg:06d77-g2" kvg:element="毎" kvg:position="right">
+		<g id="kvg:06d77-g3" kvg:position="top"><path id="kvg:06d77-s4" d="M1,1L2,2"/></g>
+		<path id="kvg:06d77-s5" d="M1,1L2,2"/>
+	</g>
+</g>
+</kanji>
+<kanji id="kvg:kanji_056fd">
+<g id="kvg:056fd" kvg:element="国">
+	<g id="kvg:056fd-g1" kvg:element="囗" kvg:part="1" kvg:position="kamae"><path id="kvg:056fd-s1" d="M1,1L2,2"/><path id="kvg:056fd-s2" d="M1,1L2,2"/></g>
+	<g id="kvg:056fd-g2" kvg:element="玉"><path id="kvg:056fd-s3" d="M1,1L2,2"/></g>
+	<g id="kvg:056fd-g3" kvg:element="囗" kvg:part="2" kvg:position="kamae"><path id="kvg:056fd-s4" d="M1,1L2,2"/></g>
+</g>
+</kanji>
+<kanji id="kvg:kanji_04e00">
+<g id="kvg:04e00" kvg:element="一"><path id="kvg:04e00-s1" d="M1,1L2,2"/></g>
+</kanji>
+</kanjivg>`;
+
+  it('reads component trees with stroke counts', () => {
+    const tree = parseKanjivgComponents(componentXml).get('6d77');
+    expect(tree?.element).toBe('海');
+    expect(tree?.strokeCount).toBe(5);
+    expect(
+      tree?.children.map((child) => [child.element, child.position, child.strokeCount]),
+    ).toEqual([
+      ['氵', 'left', 3],
+      ['毎', 'right', 2],
+    ]);
+  });
+
+  it('names parts by position, with a name where one is known and a stroke count otherwise', () => {
+    const trees = parseKanjivgComponents(componentXml);
+    const meanings = new Map([['玉', 'jewel']]);
+    const hint = (codePoint: string) => {
+      const tree = trees.get(codePoint);
+      return tree === undefined
+        ? undefined
+        : componentHint(tree, (literal) => meanings.get(literal));
+    };
+    expect(hint('6d77')).toBe('Left: water · Right: 2 strokes');
+    // An enclosure split around its contents is one part.
+    expect(hint('56fd')).toBe('Enclosure: enclosure · Inside: jewel');
+    expect(hint('4e00')).toBeUndefined();
+  });
+
+  it('builds hints for catalog characters only', () => {
+    const hints = buildComponentHints(componentXml, [
+      { ...entry('海', 5), meanings: ['sea'] },
+      { ...entry('毎', 6), meanings: ['every'] },
+      entry('一', 1),
+    ]);
+    expect(hints).toEqual({ 'k-6d77': 'Left: water · Right: every' });
+  });
+
+  it('pairs characters whose shapes pass as each other, symmetrically', () => {
+    // 土 and 士 differ only in which horizontal is longer; 工 is further away.
+    const references = new ReferenceStrokes({
+      'k-571f': ['2a5ad65a', '8018809e', '1ab8e6b8'],
+      'k-58eb': ['1a5ae65a', '8018809e', '2ab8d6b8'],
+      'k-5ddd': ['10201030', '80208070', '7070a070'],
+    });
+    const lookalikes = buildLookalikes(references, ['k-571f', 'k-58eb', 'k-5ddd']);
+    expect(lookalikes['k-571f']).toEqual(['k-58eb']);
+    expect(lookalikes['k-58eb']).toEqual(['k-571f']);
+    expect(lookalikes['k-5ddd']).toBeUndefined();
   });
 });

@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { useAppServices, useSessions, useSettings } from '../../app/useAppServices';
+import { usePersistence } from '../../app/storage-persistence';
+import { readThemePreference, saveThemePreference, type ThemePreference } from '../../app/theme';
+import {
+  useAppServices,
+  useBackupStatus,
+  useSessions,
+  useSettings,
+} from '../../app/useAppServices';
 import { Button } from '../../components/Button';
 import { localDayKey } from '../../domain/date';
 import type { InputMode, SettingsRecord } from '../../domain/types';
@@ -132,6 +139,7 @@ function PreferencesForm({
 
 function BackupPanel({ activeSessionId }: { readonly activeSessionId: string | undefined }) {
   const { backup } = useAppServices();
+  const status = useBackupStatus();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -241,6 +249,13 @@ function BackupPanel({ activeSessionId }: { readonly activeSessionId: string | u
             The file is a consistent snapshot taken in a read transaction. Keep it somewhere safe;
             it is not encrypted.
           </p>
+          {status === undefined ? null : (
+            <p className="muted" data-testid="last-backup">
+              {status.lastExportAt === null
+                ? 'No backup exported from this browser yet.'
+                : `Last backup: ${formatDateTime(status.lastExportAt)}, ${String(status.reviewsSinceExport)} ${status.reviewsSinceExport === 1 ? 'review' : 'reviews'} ago.`}
+            </p>
+          )}
           <Button
             disabled={busy}
             onClick={() => {
@@ -307,6 +322,84 @@ function BackupPanel({ activeSessionId }: { readonly activeSessionId: string | u
   );
 }
 
+const PERSISTENCE_TEXT = {
+  persisted:
+    'This browser has agreed to keep KanjiPain’s data when it runs short of space. Clearing site data yourself still removes it.',
+  'not-persisted':
+    'This browser may delete KanjiPain’s data when it runs short of space. Ask it to keep the data, and export backups regularly.',
+  unsupported: 'This browser cannot be asked to keep site data. Export backups regularly.',
+} as const;
+
+function PersistencePanel() {
+  const { state, request } = usePersistence();
+  const [asked, setAsked] = useState(false);
+  if (state === undefined) return null;
+  return (
+    <div className="persistence" data-testid="persistence">
+      <p>
+        <strong>
+          {state === 'persisted' ? 'Persistent storage: on.' : 'Persistent storage: off.'}
+        </strong>{' '}
+        {PERSISTENCE_TEXT[state]}
+      </p>
+      {state === 'not-persisted' ? (
+        <>
+          <Button
+            onClick={() => {
+              setAsked(true);
+              void request();
+            }}
+          >
+            Ask the browser to keep my data
+          </Button>
+          {asked ? (
+            <p className="muted" role="status">
+              The browser declined for now. Browsers grant this more readily to sites you use often
+              or have installed.
+            </p>
+          ) : null}
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+const THEME_OPTIONS: readonly { value: ThemePreference; label: string }[] = [
+  { value: 'system', label: 'Match the system' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
+
+function AppearancePanel() {
+  const [theme, setTheme] = useState<ThemePreference>(readThemePreference);
+  return (
+    <section className="panel" aria-labelledby="appearance-title">
+      <h2 id="appearance-title">Appearance</h2>
+      <fieldset className="mode-switch">
+        <legend>Colour theme</legend>
+        {THEME_OPTIONS.map((option) => (
+          <label key={option.value}>
+            <input
+              type="radio"
+              name="theme"
+              value={option.value}
+              checked={theme === option.value}
+              onChange={() => {
+                setTheme(option.value);
+                saveThemePreference(option.value);
+              }}
+            />
+            {option.label}
+          </label>
+        ))}
+      </fieldset>
+      <p className="muted">
+        The theme is remembered on this device only. The drawing pad stays light in both themes.
+      </p>
+    </section>
+  );
+}
+
 export function SettingsPage() {
   const settings = useSettings();
   const sessions = useSessions();
@@ -350,6 +443,7 @@ export function SettingsPage() {
         notice={preferencesNotice}
         onNotice={setPreferencesNotice}
       />
+      <AppearancePanel />
       <BackupPanel activeSessionId={activeSession?.id} />
 
       <section className="panel" aria-labelledby="storage-title">
@@ -365,6 +459,7 @@ export function SettingsPage() {
           devices, or making large changes. Exported files are plain JSON and exclude the
           2,136-character catalog and every drawing.
         </p>
+        <PersistencePanel />
         {activeSession === undefined ? null : (
           <p className="muted">
             An active session started {formatDateTime(activeSession.startedAt)}. Finish or resume it

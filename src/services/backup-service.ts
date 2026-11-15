@@ -15,6 +15,27 @@ import {
 import { InvalidPersistedDataError, mapStorageError } from '../storage/errors';
 
 export const MAX_BACKUP_BYTES = 25 * 1024 * 1024;
+/** Scheduled reviews after the last backup before the Dojo suggests exporting another. */
+export const BACKUP_REMINDER_REVIEWS = 50;
+const LAST_EXPORT_KEY = 'backup.lastExportAt';
+const REMINDER_DISMISSED_KEY = 'backup.reminderDismissedAt';
+
+/**
+ * How current the learner's last backup is. Kept on this device only (the `meta` table),
+ * never in a backup file.
+ */
+export interface BackupStatus {
+  /** When this device last exported a backup, or restored one; null if never. */
+  readonly lastExportAt: UnixMs | null;
+  /** Scheduled reviews since then. */
+  readonly reviewsSinceExport: number;
+  /** Whether to suggest a backup: enough reviews since the last one or the last reminder. */
+  readonly reminderDue: boolean;
+}
+
+function metaTime(row: { value: unknown } | undefined): UnixMs | null {
+  return typeof row?.value === 'number' && Number.isFinite(row.value) ? row.value : null;
+}
 
 export class BackupError extends Error {
   constructor(message: string, options?: ErrorOptions) {
@@ -366,8 +387,64 @@ export class BackupService {
     }
   }
 
+  /** Exports a backup and records the time, so the Dojo can say how current backups are. */
   async exportJson(): Promise<string> {
-    return JSON.stringify(await this.createExport(), null, 2);
+    const envelope = await this.createExport();
+    try {
+      await this.#database.meta.put({
+        key: LAST_EXPORT_KEY,
+        version: 1,
+        value: envelope.exportedAt,
+      });
+    } catch {
+      // The export itself succeeded; only the reminder bookkeeping is lost.
+    }
+    return JSON.stringify(envelope, null, 2);
+  }
+
+  async getStatus(): Promise<BackupStatus> {
+    try {
+      return await this.#database.transaction(
+        'r',
+        this.#database.meta,
+        this.#database.events,
+        async () => {
+          const lastExportAt = metaTime(await this.#database.meta.get(LAST_EXPORT_KEY));
+          const dismissedAt = metaTime(await this.#database.meta.get(REMINDER_DISMISSED_KEY));
+          const scheduledSince = (since: number) =>
+            this.#database.events
+              .where('occurredAt')
+              .above(since)
+              .filter((event) => event.kind === 'scheduled')
+              .count();
+          const reviewsSinceExport = await scheduledSince(lastExportAt ?? -1);
+          const sinceReminder =
+            dismissedAt === null || dismissedAt <= (lastExportAt ?? -1)
+              ? reviewsSinceExport
+              : await scheduledSince(dismissedAt);
+          return {
+            lastExportAt,
+            reviewsSinceExport,
+            reminderDue: sinceReminder >= BACKUP_REMINDER_REVIEWS,
+          };
+        },
+      );
+    } catch (error) {
+      throw mapStorageError(error, 'reading the backup status');
+    }
+  }
+
+  /** Hides the backup reminder until another round of reviews has been done. */
+  async dismissReminder(): Promise<void> {
+    try {
+      await this.#database.meta.put({
+        key: REMINDER_DISMISSED_KEY,
+        version: 1,
+        value: this.#clock.now(),
+      });
+    } catch (error) {
+      throw mapStorageError(error, 'dismissing the backup reminder');
+    }
   }
 
   async previewImport(text: string): Promise<BackupPreview> {
@@ -405,12 +482,22 @@ export class BackupService {
           this.#database.contentIssues,
           this.#database.decks,
           this.#database.deckEntries,
+          this.#database.meta,
         ],
         async () => {
           const active = await this.#database.sessions.where('status').equals('active').first();
           if (active !== undefined) {
             throw new BackupActiveSessionError(active.id);
           }
+
+          // The restored progress is exactly what the file holds, so it is backed up as of
+          // the moment the file was made.
+          await this.#database.meta.put({
+            key: LAST_EXPORT_KEY,
+            version: 1,
+            value: parsed.envelope.exportedAt,
+          });
+          await this.#database.meta.delete(REMINDER_DISMISSED_KEY);
 
           // Custom decks are replaced along with progress. The Standard deck is not stored,
           // so no backup can change it.

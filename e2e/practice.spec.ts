@@ -37,7 +37,14 @@ test('draws a real character, grades it, and finishes with a summary', async ({ 
   expect(page.url()).toContain('/#/sessions/');
 });
 
-test('supports a keyboard-only paper attempt and stacks feedback at 360px', async ({ page }) => {
+test('supports a keyboard-only paper attempt and stacks feedback at 360px', async ({
+  page,
+  browserName,
+}) => {
+  test.skip(
+    browserName === 'webkit',
+    'WebKit on macOS skips buttons and checkboxes when tabbing by default.',
+  );
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto('/#/practice');
   await expect(page.getByRole('heading', { name: 'Meet the character' })).toBeVisible();

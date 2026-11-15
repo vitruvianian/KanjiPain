@@ -8,7 +8,7 @@ test('first visit explains the product, persists onboarding, and reaches a summa
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Welcome to KanjiPain' })).toBeVisible();
   await expect(page.getByText(/stored only in this browser/i)).toBeVisible();
-  await expect(page.getByText(/cannot grade handwriting/i)).toBeVisible();
+  await expect(page.getByText(/the grade is yours/i)).toBeVisible();
   await expect(page.getByText(/drawings are never included in a backup/i)).toBeVisible();
 
   await page.getByRole('button', { name: 'Enter the Dojo' }).click();

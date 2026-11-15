@@ -83,9 +83,10 @@ export type SessionPhase =
 /**
  * `regular` follows the schedule and the daily new-character limit. The extra modes are
  * started on request, as often as the learner likes: `extra-new` introduces more characters
- * beyond the daily limit, `review-ahead` practises learned characters before they are due.
+ * beyond the daily limit, `review-ahead` practises learned characters before they are due,
+ * and `contrast` drills learned look-alikes (未 and 末) back to back.
  */
-export type SessionMode = 'regular' | 'extra-new' | 'review-ahead';
+export type SessionMode = 'regular' | 'extra-new' | 'review-ahead' | 'contrast';
 
 export interface SessionRecord {
   id: string;
@@ -116,6 +117,8 @@ export interface PlanSessionInput {
   readonly introducedToday: number;
   readonly now: UnixMs;
   readonly mode?: SessionMode;
+  /** Look-alike characters, for `contrast` sessions. */
+  readonly lookalikes?: (id: KanjiId) => readonly KanjiId[];
 }
 
 export interface SessionPlan {

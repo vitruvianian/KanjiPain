@@ -146,8 +146,8 @@ describe('session phase schemas', () => {
 });
 
 describe('teachingNotesSchema', () => {
-  it('accepts the intentionally empty initial teaching-notes file', () => {
-    expect(teachingNotesSchema.parse(teachingNotes)).toEqual({});
+  it('accepts the bundled teaching-notes file', () => {
+    expect(Object.keys(teachingNotesSchema.parse(teachingNotes))).toHaveLength(6);
   });
 
   it('requires provenance for a curated note', () => {

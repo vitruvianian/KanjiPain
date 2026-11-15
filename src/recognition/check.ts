@@ -280,6 +280,23 @@ function compare(
   return { best, inOrder: inOrderPairing(drawn, reference), drawnToFrame: frame };
 }
 
+/**
+ * How closely character `a`, written exactly, fits character `b`: the mean stroke cost, or
+ * Infinity when stroke counts differ or `a` would not pass as `b` on shape alone. Pairs
+ * with a finite value are look-alikes: only the look-alike margin tells them apart.
+ */
+export function lookalikeCost(references: ReferenceStrokes, a: KanjiId, b: KanjiId): number {
+  const drawn = references.strokesFor(a);
+  const target = sampledReference(references, b);
+  const own = sampledReference(references, a);
+  if (drawn === undefined || target === undefined || own === undefined) return Infinity;
+  if (drawn.length !== target.length) return Infinity;
+  // Skip the full comparison for characters that are nowhere near.
+  if (roughCost(own, target) > 1.5 * THRESHOLDS.mean) return Infinity;
+  const fitted = compare(drawn, unitFrame(drawn), target, true);
+  return passes(fitted.best) ? fitted.best.mean : Infinity;
+}
+
 function* combinations(items: readonly number[], size: number, from = 0): Generator<number[]> {
   if (size === 0) {
     yield [];

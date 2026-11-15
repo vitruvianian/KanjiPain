@@ -21,7 +21,7 @@ describe('buildPrompt', () => {
     });
   });
 
-  it('applies reviewed overrides and orders mnemonic, component, then stroke count', () => {
+  it('applies reviewed overrides and orders mnemonic, stroke count, then component', () => {
     const catalogEntry = entry(1);
     const prompt = buildPrompt(catalogEntry, {
       promptOverride: { meaningCue: 'a reviewed cue', readingCues: ['キュー'] },
@@ -33,7 +33,7 @@ describe('buildPrompt', () => {
 
     expect(prompt.meaningCue).toBe('a reviewed cue');
     expect(prompt.readingCues).toEqual(['キュー']);
-    expect(prompt.hints.map((hint) => hint.key)).toEqual(['mnemonic', 'component', 'stroke-count']);
+    expect(prompt.hints.map((hint) => hint.key)).toEqual(['mnemonic', 'stroke-count', 'component']);
     expect(prompt.hints).not.toContainEqual(expect.objectContaining({ key: 'full-answer' }));
   });
 

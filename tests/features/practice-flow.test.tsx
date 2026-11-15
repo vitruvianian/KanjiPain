@@ -11,7 +11,7 @@ import { loadBundledCatalog } from '../../src/services/catalog';
 import { createDatabase, initializeDatabase } from '../../src/storage/database';
 
 const databaseNames = new Set<string>();
-const catalog = loadBundledCatalog();
+const catalog = await loadBundledCatalog();
 
 function databaseName(label: string): string {
   const name = `kanjipain-practice-${label}-${crypto.randomUUID()}`;

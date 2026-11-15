@@ -28,7 +28,14 @@ Reference strokes for checking drawn characters are derived from **KanjiVG**, co
 - License: Creative Commons Attribution-ShareAlike 3.0 (CC BY-SA 3.0)
 - Bundled notice: [`public/licenses/kanjivg-license.txt`](./public/licenses/kanjivg-license.txt)
 
-[`src/data/strokes.generated.json`](./src/data/strokes.generated.json) is a transformed extract: for each catalog character, every stroke path is flattened to a line, simplified, and stored on a 0–255 grid in stroke order. The same transformation is applied to every character in the KanjiVG release (about 6,700) and written to [`src/data/stroke-shards/`](./src/data/stroke-shards/) as 64 files keyed by code point modulo 64, so custom decks get stroke order for characters outside the catalog and load only the files they need. Component groupings and stroke-type labels are not distributed. The adapted data remains under CC BY-SA 3.0.
+[`src/data/strokes.generated.json`](./src/data/strokes.generated.json) is a transformed extract: for each catalog character, every stroke path is flattened to a line, simplified, and stored on a 0–255 grid in stroke order. The same transformation is applied to every character in the KanjiVG release (about 6,700) and written to [`src/data/stroke-shards/`](./src/data/stroke-shards/) as 64 files keyed by code point modulo 64, so custom decks get stroke order for characters outside the catalog and load only the files they need. Stroke-type labels are not distributed. The adapted data remains under CC BY-SA 3.0.
+
+Two more files are derived from KanjiVG for the catalog's characters, and are also under CC BY-SA 3.0:
+
+- [`src/data/component-hints.generated.json`](./src/data/component-hints.generated.json): a hint naming each character's main parts by position, from KanjiVG's component grouping (`kvg:element`, `kvg:position`). A part is named by the first meaning of the same character in KANJIDIC2, by a short built-in name for common components that are not Jōyō kanji (氵 water, 扌 hand, 辶 movement), or by its stroke count.
+- [`src/data/lookalikes.generated.json`](./src/data/lookalikes.generated.json): for each character, up to four others with the same stroke count whose written shape passes the handwriting checker as it (未 and 末). Used for feedback and contrast drills.
+
+The app icons in [`public/icons/`](./public/icons/) draw 痛 from its KanjiVG strokes (`npm run icons:generate`).
 
 KanjiVG and KANJIDIC2 disagree on the stroke count of nine characters that have two accepted written forms (for example 賭). They are listed under `strokeCountDifferences` in the strokes manifest. `data:validate` fails on any difference not listed there, so a new one must be reviewed before release. For these characters the checker does not judge a drawing made with the catalog's stroke count.
 
@@ -41,7 +48,7 @@ npm run data:validate
 npm run checker:selftest
 ```
 
-`strokes:fetch` downloads into ignored `data/raw/`; `strokes:import` never downloads. Review the manifest diff and the self-test report (it takes a few minutes): correct drawings should stay at 100% accepted, and the wrongly accepted list should stay short. Re-run `strokes:import` whenever the kanji catalog changes, since the stroke file must cover exactly the catalog's characters. `strokes:import` also rewrites the shard files and records their count and hash under `shards` in the strokes manifest; custom-deck entries pick up new stroke data the next time the app starts.
+`strokes:fetch` downloads into ignored `data/raw/`; `strokes:import` never downloads. Review the manifest diff and the self-test report (it takes a few minutes): correct drawings should stay at 100% accepted, and the wrongly accepted list should stay short. Re-run `strokes:import` whenever the kanji catalog changes, since the stroke file must cover exactly the catalog's characters. It also regenerates the component hints and look-alikes (the look-alike search takes about 20 seconds) and records their counts and hashes in the strokes manifest, which `data:validate` checks. `strokes:import` also rewrites the shard files and records their count and hash under `shards` in the strokes manifest; custom-deck entries pick up new stroke data the next time the app starts.
 
 ## Noto Sans JP
 
@@ -57,7 +64,7 @@ Check for KANJIDIC2 updates at least monthly and before each release. Review the
 2. Run `npm run data:fetch`. This explicitly downloads the gzip file into ignored `data/raw/`, writes it atomically, and records response metadata and SHA-256.
 3. Run `npm run data:import`. To use an already downloaded file, run `npm run data:import -- path/to/kanjidic2.xml.gz` instead. Importing never downloads data.
 4. Run `npm run data:validate`. The command must report exactly 2,136 unique Jōyō entries.
-5. Review the generated catalog and manifest diff: changed literals, meanings/readings, grades, frequency/curriculum order, retrieval/upstream dates, input and output SHA-256 hashes, and dataset version. Also review changes to `teaching-notes.json`; notes require documented sources and a reviewer. Stable IDs must continue to derive from Unicode code points (`湖` → `k-6e56`); a data refresh must not rename IDs, delete IndexedDB, or reset user progress. Active sessions pin their dataset version; do not bypass compatibility checks.
+5. Review the generated catalog and manifest diff: changed literals, meanings/readings, grades, frequency/curriculum order, retrieval/upstream dates, input and output SHA-256 hashes, and dataset version. Also review changes to `teaching-notes.json`; notes require documented sources and a reviewer. `data:validate` fails when two characters would share a meaning cue; separate them with a teaching-note prompt override (as for 砂/沙, 捕/捉 and 嫉/妬). Stable IDs must continue to derive from Unicode code points (`湖` → `k-6e56`); a data refresh must not rename IDs, delete IndexedDB, or reset user progress. Active sessions pin their dataset version; do not bypass compatibility checks.
 6. Refresh the bundled upstream documentation and license copies if those pages changed.
 7. If the dataset changed, run `npm run e2e:fixtures` to regenerate the valid browser-test backups. Review their diffs, too. Tests use these fixtures through the public import UI, not as production learning data.
 8. Run the full project checks below. Verify Sources & licenses displays the new manifest and that all bundled license links work. Retain the reviewed generated assets and license copies together in the release; raw inputs remain ignored.

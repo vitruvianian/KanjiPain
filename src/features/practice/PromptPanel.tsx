@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { useKeyboardShortcuts } from '../../app/useKeyboardShortcuts';
 import { Button } from '../../components/Button';
 import { DrawingPad } from '../../components/DrawingPad';
 import { PaperInput } from '../../components/PaperInput';
@@ -35,6 +36,16 @@ export function PromptPanel({
   const allHintKeys = [...prompt.hints.map((hint) => hint.key), 'full-answer' as const];
   const moreHints = allHintKeys.some((key) => !draft.hintKeysUsed.includes(key));
   const hasAttempt = strokes.length > 0 || paperConfirmed;
+
+  useKeyboardShortcuts({
+    enter:
+      busy || !hasAttempt
+        ? undefined
+        : () => {
+            onReveal('compare');
+          },
+    h: busy || !moreHints ? undefined : onRequestHint,
+  });
 
   function changeMode(mode: InputMode) {
     setInputMode(mode);
@@ -123,6 +134,7 @@ export function PromptPanel({
         <Button
           variant="primary"
           disabled={busy || !hasAttempt}
+          aria-keyshortcuts="Enter"
           onClick={() => {
             onReveal('compare');
           }}
@@ -131,6 +143,7 @@ export function PromptPanel({
         </Button>
         <Button
           disabled={busy || !moreHints}
+          aria-keyshortcuts="H"
           onClick={() => {
             onRequestHint();
           }}
@@ -149,6 +162,9 @@ export function PromptPanel({
       <p className="muted">
         &ldquo;I don&apos;t know&rdquo; reveals the answer and records this attempt as a miss. It
         needs no drawing.
+      </p>
+      <p className="muted shortcut-hint">
+        Keyboard: <kbd>Enter</kbd> compares, <kbd>H</kbd> asks for a hint.
       </p>
     </section>
   );

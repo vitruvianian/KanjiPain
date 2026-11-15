@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { EXTRA_NEW_COUNT, chooseNextItem, planSession } from '../../src/domain/queue';
+import {
+  EXTRA_NEW_COUNT,
+  chooseNextItem,
+  planContrastPairs,
+  planSession,
+} from '../../src/domain/queue';
 import type { SettingsRecord } from '../../src/domain/types';
 import { BASE_TIME, card, entry, session } from './domain-fixtures';
 
@@ -11,6 +16,62 @@ const settings: SettingsRecord = {
   onboardingCompleted: true,
   activeDeckId: 'standard',
 };
+
+describe('contrast drills', () => {
+  const catalog = Array.from({ length: 8 }, (_, index) => entry(index));
+  const id = (index: number) => catalog[index]?.id ?? '';
+  // 0↔1 and 2↔3 are look-alikes, and 1 also looks like 2.
+  const table: Record<string, string[]> = {
+    [id(0)]: [id(1)],
+    [id(1)]: [id(0), id(2)],
+    [id(2)]: [id(3), id(1)],
+    [id(3)]: [id(2)],
+    [id(4)]: [id(5)],
+    [id(5)]: [id(4)],
+  };
+  const lookalikes = (kanjiId: string) => table[kanjiId] ?? [];
+
+  it('pairs learned look-alikes once each, the soonest due pair first', () => {
+    const cards = [
+      card(catalog[0] ?? entry(0), { dueAt: BASE_TIME + 5_000 }),
+      card(catalog[1] ?? entry(1), { dueAt: BASE_TIME + 9_000 }),
+      card(catalog[2] ?? entry(2), { dueAt: BASE_TIME + 1_000 }),
+      card(catalog[3] ?? entry(3), { dueAt: BASE_TIME + 2_000 }),
+      // 4's look-alike 5 is not learned yet; 6 has none.
+      card(catalog[4] ?? entry(4)),
+      card(catalog[6] ?? entry(6)),
+    ];
+
+    const pairs = planContrastPairs(cards, catalog, lookalikes);
+    expect(pairs.map(([left, right]) => [left.kanjiId, right.kanjiId])).toEqual([
+      [id(2), id(3)],
+      [id(0), id(1)],
+    ]);
+
+    const plan = planSession({
+      cards,
+      catalog,
+      settings,
+      introducedToday: 0,
+      now: BASE_TIME,
+      mode: 'contrast',
+      lookalikes,
+    });
+    expect(plan.newCount).toBe(0);
+    expect(plan.primaryItems.map((item) => item.kanjiId)).toEqual([id(2), id(3), id(0), id(1)]);
+    expect(plan.primaryItems.every((item) => item.origin === 'due')).toBe(true);
+  });
+
+  it('leaves out paused cards and characters outside the deck', () => {
+    const cards = [
+      card(catalog[0] ?? entry(0)),
+      card(catalog[1] ?? entry(1), { suspended: true }),
+      card(catalog[2] ?? entry(2)),
+      card(catalog[3] ?? entry(3)),
+    ];
+    expect(planContrastPairs(cards, catalog.slice(0, 3), lookalikes)).toEqual([]);
+  });
+});
 
 describe('planSession extra modes', () => {
   it('introduces a fixed batch beyond the daily limit and leaves due reviews alone', () => {

@@ -108,6 +108,7 @@ export function studyEntryFromRecord(record: DeckEntryRecord, curriculumOrder: n
 export function customDeckContent(
   deck: DeckRecord,
   records: readonly DeckEntryRecord[],
+  catalog?: CatalogRepository,
 ): DeckContent {
   const entries = Object.freeze(orderDeckEntries(records, deck.order).map(studyEntryFromRecord));
   const byId = new Map(entries.map((entry) => [entry.id, entry]));
@@ -121,7 +122,14 @@ export function customDeckContent(
     entries,
     practicable: Object.freeze(entries.filter(hasCue)),
     byId: (id: KanjiId) => byId.get(id),
-    noteFor: () => undefined,
+    // The deck's own text replaces the catalog's prompt and mnemonic; the generated
+    // component hint still applies to any character the catalog knows.
+    noteFor: (id: KanjiId) => {
+      const componentHint = catalog?.teachingNotes[id]?.componentHint;
+      return componentHint === undefined
+        ? undefined
+        : { componentHint, source: 'KanjiVG component grouping', reviewer: 'generated' };
+    },
   });
 }
 
@@ -156,5 +164,5 @@ export async function loadDeckContent(
   const deck = await database.decks.get(deckId);
   if (deck === undefined) return undefined;
   const records = await database.deckEntries.where('deckId').equals(deckId).toArray();
-  return customDeckContent(parseDeck(deck), records.map(parseDeckEntry));
+  return customDeckContent(parseDeck(deck), records.map(parseDeckEntry), catalog);
 }

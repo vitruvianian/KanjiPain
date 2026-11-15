@@ -39,9 +39,14 @@ Only primary attempts update FSRS, including a new character's first graded chec
 
 Sessions prioritize due cards and have at most 20 primary exercises and 60 graded attempts including rematches.
 
+Hints climb from least to most revealing: your mnemonic (if any), the stroke count, the character's parts ("Left: water · Right: every", generated from KanjiVG for about 1,940 characters), then the full answer. The answer is shown drawn from its strokes, as it is written by hand, rather than in a print font. Feedback also lists characters that are easily confused with the answer, such as 未 and 末.
+
+**Keyboard shortcuts** (desktop): `Enter` compares, continues and hides an introduction; `H` asks for a hint; `1`, `2`, `3` grade Got it, Barely, Missed it; `Escape` cancels a grade override. They do nothing while a text field has focus.
+
 To study beyond the plan, start an **extra session** from the Dojo or from any session summary, as often as you like:
 
 - **Learn more new characters** introduces 5 more, past the daily limit. They are counted in today's introductions, so regular sessions add no further new characters today.
+- **Drill look-alike pairs** asks for learned characters that are easily confused, such as 未 and 末, one straight after the other, up to 10 pairs. Like reviewing ahead, these are real FSRS reviews. The look-alike list is generated from KanjiVG: pairs whose written shapes pass the checker as each other.
 - **Review ahead** practises up to 20 learned characters, the soonest due first, even if they are not due yet. These are real FSRS reviews: an early review strengthens memory less, so the next interval grows less than an on-time review would. The daily new limit defaults to 5 and is configurable from 0–10; 0 stops introductions, not due reviews. Enrollment counts when an introduction is displayed and persisted—not when graded. Finishing after the next introduction can therefore count an unreviewed new character, which remains due. You can finish early at any phase.
 
 The Collection searches the whole catalog before pagination, with progress filters and character details/history. **This prompt is ambiguous** pauses the card without an FSRS failure; resume it from character details without moving its due date.
@@ -62,14 +67,18 @@ Practice uses one deck at a time. Choose it on the Dojo, in Settings, or on the 
 
 Progress, settings, history, and active session drafts live in **IndexedDB** (`kanjipain`), scoped to the browser profile and site origin. Completed strokes, hints, and revealed phases survive reloads once saved. Rapid grade clicks are idempotent; stale tabs reload canonical state with a notice rather than overwriting it.
 
-**Export backups regularly from Settings.** Clearing site data, discarding private browsing, browser eviction, or changing origin can lose access to local progress. There is no server copy or cross-device sync.
+**Export backups regularly from Settings.** Clearing site data, discarding private browsing, browser eviction, or changing origin can lose access to local progress. There is no server copy or cross-device sync. The Dojo shows the date of your last backup and suggests another after 50 reviews without one ("Remind me later" waits for another 50).
+
+Entering the Dojo asks the browser for **persistent storage**, so it does not evict progress when it runs short of space. Browsers decide on their own (some grant silently, some ask, some refuse); Settings shows the result and can ask again.
 
 - Export/import is available only after finishing the active session.
 - Backups are unencrypted version 2 JSON containing cards, schedules, events, finished sessions, settings, content issues, and custom decks. They exclude drawings and the static catalog. Version 1 backups (made before decks existed) still import.
 - Import checks the 25 MiB limit, schema, scheduler compatibility, deck entries, and record relationships before writing. Preview the counts, optionally export current progress, then explicitly confirm replacement.
 - Import **replaces**, never merges, local progress and custom decks in one transaction. Invalid files or failed writes leave existing progress intact.
 
-Local-first does **not** mean installable/offline-first: once app assets and the scheduler have loaded, practice can continue with the network disabled. There is no service worker, guaranteed offline reload/cold start, or PWA installation support.
+**Offline and installation.** Once the app has been opened over HTTPS (or on `localhost`), a service worker keeps the app, the catalog and the Jōyō stroke data cached, so it starts and runs with no network. Stroke data for custom-deck characters and font subsets are cached as they are first used. A new deployment is picked up on the next visit with a network. The app has a web manifest and icons, so browsers that support it can install it to the home screen. Over plain HTTP from another device on the local network there is no service worker.
+
+**Appearance.** The app follows the system's light or dark setting; Settings can force either. The choice is remembered on this device only.
 
 ## Development commands
 
@@ -86,17 +95,20 @@ Local-first does **not** mean installable/offline-first: once app assets and the
 | `npm run preview -- --host 127.0.0.1`     | Serve the production build locally                                      |
 | `npm run test:e2e`                        | Production-preview Chromium tests                                       |
 | `npm run e2e:fixtures`                    | Regenerate deterministic test backups using real services               |
+| `npm run icons:generate`                  | Redraw the app icons from KanjiVG strokes (needs Playwright Chromium)   |
 
-Install the browser once before running E2E:
+Install the browsers once before running E2E:
 
 ```sh
-npx playwright install chromium
+npx playwright install chromium webkit
 npm run test:e2e
 ```
 
+Every test runs in Chromium; drawing, practice, checker and keyboard tests also run in WebKit. A few tests are Chromium-only: touch and pen input are synthesized through the Chrome DevTools Protocol, and macOS WebKit skips controls when tabbing by default. Service workers are blocked in tests except in `e2e/offline.spec.ts`.
+
 Playwright builds `dist-e2e/` and owns port **4173**; stop anything else on that port first. It never reuses an existing server. The separate production-mode E2E build includes an isolated input fixture; the deployable `dist/` does not. Each test gets fresh browser storage and a fixed clock. Seed backups are imported through Settings, not production debug endpoints. Traces are retained under `test-results/` on failure.
 
-Release gate:
+Release gate (`.github/workflows/ci.yml` runs it on every push and pull request):
 
 ```sh
 npm ci
@@ -105,7 +117,7 @@ npm run build
 npm run test:e2e
 ```
 
-Also visually review a 360px drawing flow and desktop keyboard/paper flow, including glyph visibility, contrast, focus, and pointer behavior. Chromium automation does not replace physical touch/pen or assistive-technology testing.
+Also visually review a 360px drawing flow and desktop keyboard/paper flow in both themes, including glyph visibility, contrast, focus, and pointer behavior. Browser automation does not replace physical touch/pen or assistive-technology testing.
 
 ## Live site
 
@@ -113,7 +125,7 @@ Every push to `main` is checked, built and published to GitHub Pages by `.github
 
 ## Static deployment
 
-Publish **`dist/`** to an HTTPS static host, including `assets/` and `licenses/`. No secrets or server environment variables are needed. Hash routing (`/#/practice`, `/#/collection`, etc.) needs no application-route rewrite rules. Serve the build over HTTP(S), not `file://`.
+Publish **`dist/`** to an HTTPS static host, including `assets/`, `icons/`, `licenses/`, `sw.js` and `manifest.webmanifest`. No secrets or server environment variables are needed. Hash routing (`/#/practice`, `/#/collection`, etc.) needs no application-route rewrite rules. Serve the build over HTTP(S), not `file://`.
 
 For a subdirectory deployment, set the Vite base at build time:
 
@@ -125,9 +137,9 @@ Publish `dist/` at `/kanjipain/`. Keep the origin stable; moving to another orig
 
 ## Sources and limits
 
-Catalog data is a transformed KANJIDIC2 extract, attributed to **James William Breen and EDRDG**, under **CC BY-SA 4.0**, separate from any application-code license. Stroke data for checking drawings and showing stroke order is a transformed KanjiVG extract (about 6,700 characters, loaded in parts as custom decks need them), © **Ulrich Apel**, under **CC BY-SA 3.0**. Japanese glyphs use bundled **Noto Sans JP**, under **SIL OFL 1.1**. The in-app Sources & licenses page ships the attribution, transformation notice, dates, hashes, and license copies. See [DATA_SOURCES.md](./DATA_SOURCES.md) for provenance and monthly/pre-release maintenance.
+Catalog data is a transformed KANJIDIC2 extract, attributed to **James William Breen and EDRDG**, under **CC BY-SA 4.0**, separate from any application-code license. Stroke data for checking drawings and showing stroke order is a transformed KanjiVG extract (about 6,700 characters, loaded in parts as custom decks need them), © **Ulrich Apel**, under **CC BY-SA 3.0**. Component hints, the look-alike list and the app icon are also derived from KanjiVG. Japanese glyphs use bundled **Noto Sans JP**, under **SIL OFL 1.1**. The in-app Sources & licenses page ships the attribution, transformation notice, dates, hashes, and license copies. See [DATA_SOURCES.md](./DATA_SOURCES.md) for provenance and monthly/pre-release maintenance.
 
-The handwriting checker verifies a drawing against the one expected character; it does not recognize arbitrary handwriting, and its thresholds are calibrated on simulated hand error, not yet on collected real handwriting. Version 1 does not provide a full reading/vocabulary curriculum, promise curated mnemonics for every character, sync accounts, or guarantee PWA installation/offline cold starts. Dictionary cues can be ambiguous; use the local pause/resume workflow rather than treating ambiguity as a recall failure. The bundled catalog currently produces a non-fatal Vite chunk-size warning.
+The handwriting checker verifies a drawing against the one expected character; it does not recognize arbitrary handwriting, and its thresholds are calibrated on simulated hand error, not yet on collected real handwriting. Version 1 does not provide a full reading/vocabulary curriculum, promise curated mnemonics for every character, or sync accounts. Component hints are generated, not reviewed: they name parts by position and can be terse ("Top: 5 strokes"). Dictionary cues can be ambiguous; use the local pause/resume workflow rather than treating ambiguity as a recall failure. The catalog now loads as its own chunk; the main script (React, router, Zod, Dexie and the app, about 680 kB) still produces a non-fatal Vite chunk-size warning.
 
 Dependency audit at handoff (2026-11-14): `npm audit` reports 9 moderate findings in the development-only ESLint/TypeScript-ESLint/minimatch chain; `npm audit --omit=dev` reports zero. Review toolchain updates separately rather than running `npm audit fix --force` against the pinned stack.
 

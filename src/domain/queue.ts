@@ -5,7 +5,7 @@ import type {
   SessionPlan,
   SessionRecord,
 } from './session-types';
-import type { CardRecord, StudyEntry } from './types';
+import type { CardRecord, KanjiId, StudyEntry } from './types';
 
 export const PRIMARY_SESSION_LIMIT = 20;
 export const REMATCH_GAP_SIZE = 3;
@@ -24,6 +24,52 @@ function freezePrimary(item: PrimarySessionItem): Readonly<PrimarySessionItem> {
   return Object.freeze(item);
 }
 
+/**
+ * Pairs of learned look-alikes in the deck for a contrast drill, the pair that is soonest
+ * fully due first. Each character is in at most one pair.
+ */
+export function planContrastPairs(
+  cards: readonly CardRecord[],
+  catalog: readonly StudyEntry[],
+  lookalikes: (id: KanjiId) => readonly KanjiId[],
+  limit = PRIMARY_SESSION_LIMIT / 2,
+): (readonly [CardRecord, CardRecord])[] {
+  const inDeck = new Set(catalog.map((entry) => entry.id));
+  const learned = new Map(
+    cards
+      .filter((card) => !card.suspended && inDeck.has(card.kanjiId))
+      .map((card) => [card.kanjiId, card]),
+  );
+  const candidates: (readonly [CardRecord, CardRecord])[] = [];
+  for (const card of learned.values()) {
+    for (const other of lookalikes(card.kanjiId)) {
+      const partner = learned.get(other);
+      if (partner !== undefined && card.kanjiId < other) candidates.push([card, partner]);
+    }
+  }
+  const due = ([left, right]: readonly [CardRecord, CardRecord]) =>
+    Math.max(left.dueAt, right.dueAt);
+  const firstDue = ([left, right]: readonly [CardRecord, CardRecord]) =>
+    Math.min(left.dueAt, right.dueAt);
+  candidates.sort(
+    (left, right) =>
+      due(left) - due(right) ||
+      firstDue(left) - firstDue(right) ||
+      left[0].id.localeCompare(right[0].id) ||
+      left[1].id.localeCompare(right[1].id),
+  );
+  const used = new Set<KanjiId>();
+  const pairs: (readonly [CardRecord, CardRecord])[] = [];
+  for (const pair of candidates) {
+    if (pairs.length >= limit) break;
+    if (used.has(pair[0].kanjiId) || used.has(pair[1].kanjiId)) continue;
+    used.add(pair[0].kanjiId);
+    used.add(pair[1].kanjiId);
+    pairs.push(pair);
+  }
+  return pairs;
+}
+
 export function planSession({
   cards,
   catalog,
@@ -31,9 +77,29 @@ export function planSession({
   introducedToday,
   now,
   mode = 'regular',
+  lookalikes = () => [],
 }: PlanSessionInput): SessionPlan {
   const catalogById = new Map(catalog.map((entry) => [entry.id, entry]));
   const cardByKanjiId = new Map(cards.map((card) => [card.kanjiId, card]));
+
+  // A contrast drill reviews learned look-alikes, each pair back to back, due or not.
+  if (mode === 'contrast') {
+    const primaryItems = Object.freeze(
+      planContrastPairs(cards, catalog, lookalikes)
+        .flat()
+        .map((card): Readonly<PrimarySessionItem> =>
+          freezePrimary({
+            id: primaryItemId(card.id),
+            cardId: card.id,
+            kanjiId: card.kanjiId,
+            origin: 'due',
+            status: 'pending',
+            expectedCardVersion: card.version,
+          }),
+        ),
+    );
+    return Object.freeze({ primaryItems, dueCount: primaryItems.length, newCount: 0 });
+  }
 
   // Extra "learn more" sessions only introduce characters; due reviews stay due for the next
   // regular session. "Review ahead" takes learned characters soonest-due first, due or not.

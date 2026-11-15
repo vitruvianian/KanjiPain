@@ -8,7 +8,27 @@
       name="description"
       content="KanjiPain turns difficult kanji recall into durable practice."
     />
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <title>KanjiPain</title>
+    <script>
+      // Apply a saved light/dark choice before the first paint (see src/app/theme.ts).
+      try {
+        var theme = localStorage.getItem('kanjipain-theme');
+        if (theme === 'light' || theme === 'dark') {
+          document.documentElement.dataset.theme = theme;
+        }
+        var light =
+          theme === 'light' ||
+          (theme !== 'dark' && matchMedia('(prefers-color-scheme: light)').matches);
+        if (light) {
+          document.querySelector('meta[name="theme-color"]').content = '#f7f4ee';
+        }
+      } catch (error) {
+        // Storage unavailable: follow the system theme.
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

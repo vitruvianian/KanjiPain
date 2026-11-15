@@ -1,14 +1,19 @@
+/* Dark is the default palette. A light palette follows the system setting unless the
+   learner picks a theme in Settings, which sets data-theme on the root element. */
 :root {
+  color-scheme: dark;
   --color-background: #141414;
   --color-surface: #20201e;
   --color-text: #f3f0e8;
   --color-muted: #bcb7ab;
   --color-accent: #e87861;
+  --color-on-accent: #1d1c19;
   --color-success: #8fb9a2;
   --color-warning: #e6b450;
   --color-paper: #f5f0e5;
   --color-ink: #1d1c19;
   --color-border: #777469;
+  --color-due-surface: #2a2320;
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -16,4 +21,38 @@
   --space-6: 1.5rem;
   --space-8: 2rem;
   --radius: 0.75rem;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    color-scheme: light;
+    --color-background: #f7f4ee;
+    --color-surface: #ffffff;
+    --color-text: #1d1c19;
+    --color-muted: #5c574d;
+    --color-accent: #b23f28;
+    --color-on-accent: #ffffff;
+    --color-success: #2e6b4f;
+    --color-warning: #8a5a00;
+    --color-paper: #f5f0e5;
+    --color-ink: #1d1c19;
+    --color-border: #8f8a7f;
+    --color-due-surface: #fbeae5;
+  }
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --color-background: #f7f4ee;
+  --color-surface: #ffffff;
+  --color-text: #1d1c19;
+  --color-muted: #5c574d;
+  --color-accent: #b23f28;
+  --color-on-accent: #ffffff;
+  --color-success: #2e6b4f;
+  --color-warning: #8a5a00;
+  --color-paper: #f5f0e5;
+  --color-ink: #1d1c19;
+  --color-border: #8f8a7f;
+  --color-due-surface: #fbeae5;
 }

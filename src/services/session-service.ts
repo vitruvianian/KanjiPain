@@ -223,6 +223,7 @@ export class SessionService {
             introducedToday,
             now,
             mode,
+            lookalikes: (id) => this.#catalog.lookalikes(id),
           });
           let created: SessionRecord = {
             id: this.#ids.next(),

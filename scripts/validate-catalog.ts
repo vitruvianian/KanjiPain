@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { z } from 'zod';
 
 import { catalogManifestSchema, teachingNotesSchema } from '../src/domain/schemas';
+import type { KanjiEntry } from '../src/domain/types';
 import {
   datasetVersion,
   EXPECTED_JOYO_COUNT,
@@ -16,6 +17,14 @@ const strokesManifestSchema = z.looseObject({
   entryCount: z.literal(EXPECTED_JOYO_COUNT),
   strokeTotal: z.number().int().positive(),
   strokesSha256: z.string().regex(/^[0-9a-f]{64}$/),
+  componentHints: z.strictObject({
+    entryCount: z.number().int().nonnegative(),
+    sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  }),
+  lookalikes: z.strictObject({
+    entryCount: z.number().int().nonnegative(),
+    sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  }),
   strokeCountDifferences: z.array(
     z.strictObject({
       id: z.string(),
@@ -96,10 +105,52 @@ export async function validateGeneratedCatalog(): Promise<void> {
     }
   }
 
+  validateDerivedTeachingData(
+    catalog,
+    strokesManifest,
+    await readFile(resolve('src/data/component-hints.generated.json')),
+    await readFile(resolve('src/data/lookalikes.generated.json')),
+  );
+
   console.log(
     `Validated ${String(catalog.length)} unique Jōyō kanji (dataset ${manifest.datasetVersion}) ` +
       `and their ${String(strokesManifest.strokeTotal)} reference strokes.`,
   );
+}
+
+/** Component hints and look-alikes: hashes, catalog membership, no leaks, symmetry. */
+function validateDerivedTeachingData(
+  catalog: readonly KanjiEntry[],
+  manifest: z.output<typeof strokesManifestSchema>,
+  hintsBytes: Buffer,
+  lookalikesBytes: Buffer,
+): void {
+  if (manifest.componentHints.sha256 !== sha256(hintsBytes)) {
+    throw new Error('Component hints SHA-256 does not match the strokes manifest.');
+  }
+  if (manifest.lookalikes.sha256 !== sha256(lookalikesBytes)) {
+    throw new Error('Look-alikes SHA-256 does not match the strokes manifest.');
+  }
+  const byId = new Map(catalog.map((entry) => [entry.id, entry]));
+  const hints = z
+    .record(z.string(), z.string().min(1))
+    .parse(parseJson(hintsBytes.toString('utf8'), 'component hints'));
+  for (const [id, hint] of Object.entries(hints)) {
+    const entry = byId.get(id);
+    if (entry === undefined) throw new Error(`Component hint for unknown character ${id}.`);
+    if (hint.includes(entry.literal)) throw new Error(`Component hint leaks ${entry.literal}.`);
+  }
+  const lookalikes = z
+    .record(z.string(), z.array(z.string()).min(1))
+    .parse(parseJson(lookalikesBytes.toString('utf8'), 'look-alikes'));
+  for (const [id, others] of Object.entries(lookalikes)) {
+    if (!byId.has(id)) throw new Error(`Look-alikes for unknown character ${id}.`);
+    for (const other of others) {
+      if (!byId.has(other) || other === id) {
+        throw new Error(`Look-alike ${other} of ${id} is not another catalog character.`);
+      }
+    }
+  }
 }
 
 const commandPath = process.argv[1];

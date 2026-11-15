@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { normalizeKana, searchEntries } from '../../src/features/collection/search';
 import { loadBundledCatalog } from '../../src/services/catalog';
 
-const catalog = loadBundledCatalog();
+const catalog = await loadBundledCatalog();
 
 describe('collection search', () => {
   it('normalizes katakana to hiragana for comparison', () => {

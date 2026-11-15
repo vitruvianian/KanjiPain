@@ -17,12 +17,15 @@ function exerciseCounts(primaryRemaining: number, rematchRemaining: number): str
 }
 
 function modeFrom(value: string | null): SessionMode {
-  return value === 'extra-new' || value === 'review-ahead' ? value : 'regular';
+  return value === 'extra-new' || value === 'review-ahead' || value === 'contrast'
+    ? value
+    : 'regular';
 }
 
 const MODE_LABELS: Readonly<Record<Exclude<SessionMode, 'regular'>, string>> = {
   'extra-new': 'Extra session: new characters',
   'review-ahead': 'Extra session: reviewing ahead',
+  contrast: 'Contrast drill: look-alikes',
 };
 
 export function PracticePage() {
@@ -101,6 +104,14 @@ export function PracticePage() {
           ? undefined
           : content.byId(card.kanjiId);
   const note = entry === undefined ? undefined : content?.noteFor(entry.id);
+  const lookalikes =
+    entry === undefined
+      ? []
+      : catalog.lookalikes(entry.id).map((id) => ({
+          id,
+          literal: literalFromKanjiId(id),
+          meaning: (content?.byId(id) ?? catalog.byId(id))?.meanings.slice(0, 3).join(', '),
+        }));
   const primaryPending = session.primaryItems.filter((item) => item.status === 'pending').length;
   const rematchPending = session.rematchItems.filter((item) => item.status === 'pending').length;
 
@@ -191,6 +202,7 @@ export function PracticePage() {
           entry={entry}
           busy={busy}
           extraReferenceIds={extraReferenceIds}
+          lookalikes={lookalikes}
           literalOf={literalFromKanjiId}
           onGrade={(grade, checkerVerdict) => {
             void practice.grade(grade, checkerVerdict);

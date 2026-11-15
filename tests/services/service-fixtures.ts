@@ -73,7 +73,10 @@ const manifest: CatalogManifest = {
   },
 };
 
-export function createTestCatalog(entries: readonly KanjiEntry[]): CatalogRepository {
+export function createTestCatalog(
+  entries: readonly KanjiEntry[],
+  lookalikes: Readonly<Record<string, readonly string[]>> = {},
+): CatalogRepository {
   const byId = new Map(entries.map((entry) => [entry.id, entry]));
   return {
     all: entries,
@@ -81,6 +84,7 @@ export function createTestCatalog(entries: readonly KanjiEntry[]): CatalogReposi
     manifest: { ...manifest, entryCount: entries.length },
     teachingNotes: {},
     byId: (id) => byId.get(id),
+    lookalikes: (id) => lookalikes[id] ?? [],
   };
 }
 
@@ -181,13 +185,14 @@ export interface ServiceHarness {
 export async function createHarness(
   databaseName: string,
   entries: readonly KanjiEntry[] = [catalogEntry(0)],
+  lookalikes: Readonly<Record<string, readonly string[]>> = {},
 ): Promise<ServiceHarness> {
   const database = createDatabase(databaseName);
   await initializeDatabase(database);
   const clock = new MutableClock();
   const ids = new SequentialIds();
   const scheduler = createMockScheduler();
-  const catalog = createTestCatalog(entries);
+  const catalog = createTestCatalog(entries, lookalikes);
   const storage = createStorageRepositories(database);
   const draftQueue = new DraftSaveQueue();
   const sessions = createSessionService({

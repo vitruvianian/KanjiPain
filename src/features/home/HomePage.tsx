@@ -13,6 +13,7 @@ import { planSession } from '../../domain/queue';
 import { DeckSwitcher } from '../decks/DeckSwitcher';
 import { formatDate } from '../format';
 import { ExtraPractice } from '../practice/ExtraPractice';
+import { BackupStatusPanel } from './BackupStatusPanel';
 import { Onboarding } from './Onboarding';
 
 function estimateMinutes(exerciseCount: number): number {
@@ -140,6 +141,7 @@ export function HomePage() {
             description="Characters paused after an ambiguous prompt."
           />
         </dl>
+        <BackupStatusPanel />
       </section>
 
       <div className="home-columns">

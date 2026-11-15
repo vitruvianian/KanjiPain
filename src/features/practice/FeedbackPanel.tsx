@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react';
 
+import { useKeyboardShortcuts } from '../../app/useKeyboardShortcuts';
+import { AnswerGlyph } from '../../components/AnswerGlyph';
 import { Button } from '../../components/Button';
 import { CharacterFacts } from '../../components/CharacterFacts';
+import { Lookalikes, type LookalikeItem } from '../../components/Lookalikes';
 import { UnrecognizedWarning } from '../../components/UnrecognizedWarning';
 import { DrawingPad } from '../../components/DrawingPad';
 import type { FeedbackPhase } from '../../domain/session-types';
@@ -15,6 +18,8 @@ interface FeedbackPanelProps {
   readonly busy: boolean;
   /** Characters of the deck outside the bundled stroke data, to check and compare against. */
   readonly extraReferenceIds?: readonly KanjiId[];
+  /** Characters easily confused with this one, to compare it against. */
+  readonly lookalikes?: readonly LookalikeItem[];
   readonly literalOf: (id: KanjiId) => string | undefined;
   readonly onGrade: (grade: Grade, checkerVerdict?: CheckerVerdict) => void;
   readonly onFlagAmbiguous: () => void;
@@ -102,6 +107,7 @@ export function FeedbackPanel({
   entry,
   busy,
   extraReferenceIds,
+  lookalikes = [],
   literalOf,
   onGrade,
   onFlagAmbiguous,
@@ -135,6 +141,30 @@ export function FeedbackPanel({
         );
   const legend = MARK_LEGEND.filter(({ mark }) => check?.marks.includes(mark) === true);
 
+  const gradeKey = (grade: Grade) =>
+    busy || assisted || override !== null
+      ? undefined
+      : () => {
+          choose(grade);
+        };
+  useKeyboardShortcuts({
+    '1': gradeKey('got'),
+    '2': gradeKey('barely'),
+    '3': gradeKey('missed'),
+    enter:
+      busy || !assisted
+        ? undefined
+        : () => {
+            onGrade('missed', check?.verdict);
+          },
+    escape:
+      override === null
+        ? undefined
+        : () => {
+            setOverride(null);
+          },
+  });
+
   function choose(grade: Grade) {
     // Grading a rejected drawing as correct has to be a deliberate act.
     if (suggestion === 'missed' && grade !== 'missed') {
@@ -148,10 +178,9 @@ export function FeedbackPanel({
     <section className="exercise-panel" aria-labelledby="feedback-title">
       <p className="eyebrow">Compare honestly</p>
       <h2 id="feedback-title">The character was</h2>
-      <p className="glyph" lang="ja">
-        {entry.literal}
-      </p>
+      <AnswerGlyph kanjiId={entry.id} literal={entry.literal} />
       <CharacterFacts entry={entry} />
+      <Lookalikes items={lookalikes} />
 
       <div className="feedback-layout">
         <div>
@@ -220,6 +249,7 @@ export function FeedbackPanel({
               <Button
                 variant="primary"
                 disabled={busy}
+                aria-keyshortcuts="Enter"
                 onClick={() => {
                   onGrade('missed', check?.verdict);
                 }}
@@ -245,6 +275,7 @@ export function FeedbackPanel({
                 </Button>
                 <Button
                   disabled={busy}
+                  aria-keyshortcuts="Escape"
                   onClick={() => {
                     setOverride(null);
                   }}
@@ -261,11 +292,12 @@ export function FeedbackPanel({
                   : `Suggested grade: ${GRADE_LABELS[suggestion]}. The checker can be wrong — the grade is your call.`}
               </p>
               <div className="button-row">
-                {(['got', 'barely', 'missed'] as const).map((grade) => (
+                {(['got', 'barely', 'missed'] as const).map((grade, index) => (
                   <Button
                     key={grade}
                     {...(grade === (suggestion ?? 'got') ? { variant: 'primary' as const } : {})}
                     disabled={busy}
+                    aria-keyshortcuts={String(index + 1)}
                     onClick={() => {
                       choose(grade);
                     }}
@@ -274,6 +306,9 @@ export function FeedbackPanel({
                   </Button>
                 ))}
               </div>
+              <p className="muted shortcut-hint">
+                Keyboard: <kbd>1</kbd> Got it, <kbd>2</kbd> Barely, <kbd>3</kbd> Missed it.
+              </p>
             </>
           )}
           <p className="muted">

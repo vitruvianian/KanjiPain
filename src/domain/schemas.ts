@@ -380,7 +380,7 @@ export const sessionRecordSchema = z
     rematchItems: z.array(rematchSessionItemSchema).max(40),
     phase: sessionPhaseSchema,
     completedEventIds: z.array(recordIdSchema).max(60),
-    mode: z.enum(['extra-new', 'review-ahead']).optional(),
+    mode: z.enum(['extra-new', 'review-ahead', 'contrast']).optional(),
     deckId: recordIdSchema.optional(),
     deckRevision: nonNegativeIntegerSchema.optional(),
   })
