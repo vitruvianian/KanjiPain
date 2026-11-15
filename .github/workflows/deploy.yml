@@ -27,6 +27,11 @@ jobs:
       - run: npm run check
       - name: Build for the /<repository>/ subpath
         run: npm run build -- --base=/${{ github.event.repository.name }}/
+        env:
+          # Account sync. Both are public values, safe in the built site; leave the repository
+          # variables unset to publish without accounts. See README, "Accounts and sync".
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

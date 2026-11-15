@@ -8,6 +8,7 @@ import {
   useBackupStatus,
   useSessions,
   useSettings,
+  useSyncStatus,
 } from '../../app/useAppServices';
 import { Button } from '../../components/Button';
 import { localDayKey } from '../../domain/date';
@@ -15,6 +16,7 @@ import type { InputMode, SettingsRecord } from '../../domain/types';
 import { MAX_BACKUP_BYTES, type BackupPreview } from '../../services/backup-service';
 import { DeckSwitcher } from '../decks/DeckSwitcher';
 import { formatDateTime } from '../format';
+import { AccountPanel } from './AccountPanel';
 import { ImportPreview } from './ImportPreview';
 
 const NEW_LIMIT_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
@@ -139,6 +141,7 @@ function PreferencesForm({
 
 function BackupPanel({ activeSessionId }: { readonly activeSessionId: string | undefined }) {
   const { backup } = useAppServices();
+  const synced = useSyncStatus().kind === 'signed-in';
   const status = useBackupStatus();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -240,6 +243,9 @@ function BackupPanel({ activeSessionId }: { readonly activeSessionId: string | u
         Export a validated JSON backup of cards, schedules, review history, finished sessions,
         settings, content issues, and custom decks. Import replaces current progress in one
         transaction; it never merges two histories. Drawings are not included.
+        {synced
+          ? ' While signed in, a restore also replaces the account’s cloud copy and the progress on your other devices.'
+          : ''}
       </p>
 
       <div className="backup-actions">
@@ -405,6 +411,8 @@ export function SettingsPage() {
   const sessions = useSessions();
   // The keyed form resets when stored preferences change; keep save feedback outside it.
   const [preferencesNotice, setPreferencesNotice] = useState<string | null>(null);
+  const syncStatus = useSyncStatus();
+  const synced = syncStatus.kind === 'signed-in';
 
   if (settings === undefined || sessions === undefined) {
     return (
@@ -423,10 +431,14 @@ export function SettingsPage() {
         <p className="eyebrow">Local-first configuration</p>
         <h1 id="settings-title">Settings</h1>
         <p>
-          KanjiPain keeps all progress in this browser. Preferences affect future planning and
-          attempts, never your saved history.
+          {synced
+            ? 'KanjiPain keeps progress in this browser and syncs it with your account.'
+            : 'KanjiPain keeps all progress in this browser.'}{' '}
+          Preferences affect future planning and attempts, never your saved history.
         </p>
       </section>
+
+      <AccountPanel />
 
       <section className="panel" aria-labelledby="deck-setting-title">
         <h2 id="deck-setting-title">Deck</h2>
@@ -455,9 +467,10 @@ export function SettingsPage() {
           discarded will remove this progress.
         </p>
         <p className="muted">
-          There is no account or server copy. Export a backup before clearing browser data, changing
-          devices, or making large changes. Exported files are plain JSON and exclude the
-          2,136-character catalog and every drawing.
+          {synced
+            ? 'Your account holds a copy that other devices sync with. A backup file is still worth exporting before large changes.'
+            : 'There is no account or server copy. Export a backup before clearing browser data, changing devices, or making large changes.'}{' '}
+          Exported files are plain JSON and exclude the 2,136-character catalog and every drawing.
         </p>
         <PersistencePanel />
         {activeSession === undefined ? null : (

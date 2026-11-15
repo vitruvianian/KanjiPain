@@ -11,6 +11,7 @@ import {
   type MetaRecord,
   type ReviewEvent,
   type SettingsRecord,
+  type SyncShadowRecord,
 } from '../domain/types';
 import { InvalidPersistedDataError, mapStorageError } from './errors';
 
@@ -33,6 +34,7 @@ export class KanjiPainDatabase extends Dexie {
   meta!: EntityTable<MetaRecord, 'key'>;
   decks!: EntityTable<DeckRecord, 'id'>;
   deckEntries!: EntityTable<DeckEntryRecord, 'id'>;
+  syncShadow!: EntityTable<SyncShadowRecord, 'key'>;
 
   constructor(name = DEFAULT_DATABASE_NAME) {
     super(name);
@@ -60,6 +62,11 @@ export class KanjiPainDatabase extends Dexie {
             settings.activeDeckId ??= STANDARD_DECK_ID;
           }),
       );
+
+    // Account sync: what the cloud copy is known to hold, one fingerprint per record.
+    this.version(3).stores({
+      syncShadow: 'key',
+    });
   }
 }
 

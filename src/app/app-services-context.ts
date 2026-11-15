@@ -7,6 +7,7 @@ import type { ContentIssueService } from '../services/content-issue-service';
 import type { ReviewService } from '../services/review-service';
 import type { SessionService } from '../services/session-service';
 import type { SettingsService } from '../services/settings-service';
+import type { SyncService } from '../services/sync/sync-service';
 import type { StorageRepositories } from '../storage/repositories';
 
 export interface AppServices {
@@ -18,6 +19,7 @@ export interface AppServices {
   readonly contentIssues: ContentIssueService;
   readonly decks: DeckService;
   readonly settings: SettingsService;
+  readonly sync: SyncService;
 }
 
 export const AppServicesContext = createContext<AppServices | null>(null);

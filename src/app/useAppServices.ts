@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useContext } from 'react';
+import { useContext, useSyncExternalStore } from 'react';
 
 import type { SessionRecord, SessionStatus } from '../domain/session-types';
 import type {
@@ -15,6 +15,7 @@ import type {
 import type { BackupStatus } from '../services/backup-service';
 import type { DeckContent } from '../services/deck-content';
 import type { DeckListItem } from '../services/deck-service';
+import type { SyncStatus } from '../services/sync/sync-service';
 import { AppServicesContext, type AppServices } from './app-services-context';
 
 export function useAppServices(): AppServices {
@@ -141,4 +142,10 @@ export function useCustomKanjiIds(): Set<KanjiId> | undefined {
 export function useBackupStatus(): BackupStatus | undefined {
   const { backup } = useAppServices();
   return useStorageQuery(() => backup.getStatus(), [backup]);
+}
+
+/** Whether an account is signed in on this device and how its sync is going. */
+export function useSyncStatus(): SyncStatus {
+  const { sync } = useAppServices();
+  return useSyncExternalStore(sync.subscribe, sync.getStatus);
 }

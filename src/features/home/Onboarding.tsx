@@ -2,10 +2,11 @@ import { useState } from 'react';
 
 import { Button } from '../../components/Button';
 import { requestPersistence } from '../../app/storage-persistence';
-import { useAppServices } from '../../app/useAppServices';
+import { useAppServices, useSyncStatus } from '../../app/useAppServices';
 
 export function Onboarding() {
   const { settings } = useAppServices();
+  const syncAvailable = useSyncStatus().kind !== 'unavailable';
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,8 +65,10 @@ export function Onboarding() {
         <section aria-labelledby="onboarding-storage">
           <h2 id="onboarding-storage">Your progress stays local</h2>
           <p>
-            Cards, schedules, and review history are stored only in this browser. There is no
-            account and no server copy.
+            Cards, schedules, and review history are stored only in this browser.{' '}
+            {syncAvailable
+              ? 'Nothing leaves it unless you sign in from Settings, which syncs progress across your devices.'
+              : 'There is no account and no server copy.'}
           </p>
           <p className="muted">
             Clearing site data removes your progress. Entering the Dojo asks your browser to keep

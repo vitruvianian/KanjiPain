@@ -67,7 +67,7 @@ Practice uses one deck at a time. Choose it on the Dojo, in Settings, or on the 
 
 Progress, settings, history, and active session drafts live in **IndexedDB** (`kanjipain`), scoped to the browser profile and site origin. Completed strokes, hints, and revealed phases survive reloads once saved. Rapid grade clicks are idempotent; stale tabs reload canonical state with a notice rather than overwriting it.
 
-**Export backups regularly from Settings.** Clearing site data, discarding private browsing, browser eviction, or changing origin can lose access to local progress. There is no server copy or cross-device sync. The Dojo shows the date of your last backup and suggests another after 50 reviews without one ("Remind me later" waits for another 50).
+**Export backups regularly from Settings.** Clearing site data, discarding private browsing, browser eviction, or changing origin can lose access to local progress. Without an account there is no server copy; see [Accounts and sync](#accounts-and-sync) for the optional one. The Dojo shows the date of your last backup and suggests another after 50 reviews without one ("Remind me later" waits for another 50).
 
 Entering the Dojo asks the browser for **persistent storage**, so it does not evict progress when it runs short of space. Browsers decide on their own (some grant silently, some ask, some refuse); Settings shows the result and can ask again.
 
@@ -79,6 +79,32 @@ Entering the Dojo asks the browser for **persistent storage**, so it does not ev
 **Offline and installation.** Once the app has been opened over HTTPS (or on `localhost`), a service worker keeps the app, the catalog and the Jōyō stroke data cached, so it starts and runs with no network. Stroke data for custom-deck characters and font subsets are cached as they are first used. A new deployment is picked up on the next visit with a network. The app has a web manifest and icons, so browsers that support it can install it to the home screen. Over plain HTTP from another device on the local network there is no service worker.
 
 **Appearance.** The app follows the system's light or dark setting; Settings can force either. The choice is remembered on this device only.
+
+## Accounts and sync
+
+Signing in (Settings → Account and sync) keeps the same progress and custom decks on every device. It is optional: without an account the app works exactly as before, and a copy of the site built without a sync server shows no account section at all.
+
+- **The browser stays the source of truth.** Practice never waits for the network and works offline; changes upload a couple of seconds later, and other devices' changes arrive when the app is opened, brought to the front, or reconnects.
+- **Nothing is overwritten by a merge.** Reviews are separate records, so two devices' histories are combined. If both reviewed the same character while apart, its schedule is worked out again from all of its reviews in order. A custom deck keeps its later edit. A session left open on one device stays there; reviews already done elsewhere are dropped from it.
+- **Signing in merges** the progress already on the device into the account. A device that holds another account's progress asks before replacing it; two accounts are never mixed.
+- **Restoring a backup while signed in** replaces the cloud copy and, at their next sync, the progress on the other devices.
+- Synced: cards and schedules, review history, finished sessions, content issues, custom decks, the daily new-character limit and the active deck. Not synced: drawings, the drawing/paper preference, the theme.
+- "Delete cloud copy" removes the account's data from the server and signs out; every device keeps what it holds.
+
+### Setting up the sync server (once, by whoever publishes the site)
+
+GitHub Pages only serves files, so accounts need a separate free service: [Supabase](https://supabase.com) (sign-in plus a Postgres database).
+
+1. Create a Supabase project. In **SQL Editor**, run [`supabase/schema.sql`](./supabase/schema.sql).
+2. Invite people: add each email address to the `sync_allowlist` table (Table Editor). Anyone can sign in, but only listed addresses can sync.
+3. **Authentication → URL Configuration:** set the site URL to the published address (for example `https://<user>.github.io/KanjiPain/`) and add it, and `http://localhost:5173/`, to the redirect URLs.
+4. **Google sign-in:** Authentication → Providers → Google, with an OAuth client from the Google Cloud console whose redirect URI is the callback URL Supabase shows there.
+5. **Email codes (optional):** Authentication → Emails → "Magic Link" template must contain `{{ .Token }}` so the message shows the 6-digit code. Supabase's built-in mailer sends only a few messages per hour; for more, set a custom SMTP sender (Resend's free tier is enough).
+6. In the GitHub repository, **Settings → Secrets and variables → Actions → Variables**, add `SUPABASE_URL` and `SUPABASE_ANON_KEY` (Project Settings → API). Both are public values: the database only lets a signed-in, invited user touch their own rows. The next deploy has accounts turned on.
+
+For local development put the same two values in `.env.local` as `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+
+Free Supabase projects pause after about a week without requests; `.github/workflows/sync-keepalive.yml` pings the project twice a week to prevent that. Deleting a person entirely (their sign-in as well as their data) is done from the Supabase dashboard under Authentication → Users.
 
 ## Development commands
 
@@ -121,11 +147,11 @@ Also visually review a 360px drawing flow and desktop keyboard/paper flow in bot
 
 ## Live site
 
-Every push to `main` is checked, built and published to GitHub Pages by `.github/workflows/deploy.yml`: <https://vitruvianian.github.io/KanjiPain/>. Progress stays in each browser; use Export/Import in Settings to move it between devices.
+Every push to `main` is checked, built and published to GitHub Pages by `.github/workflows/deploy.yml`: <https://vitruvianian.github.io/KanjiPain/>. Progress stays in each browser; sign in (once [accounts are set up](#accounts-and-sync)) or use Export/Import in Settings to move it between devices.
 
 ## Static deployment
 
-Publish **`dist/`** to an HTTPS static host, including `assets/`, `icons/`, `licenses/`, `sw.js` and `manifest.webmanifest`. No secrets or server environment variables are needed. Hash routing (`/#/practice`, `/#/collection`, etc.) needs no application-route rewrite rules. Serve the build over HTTP(S), not `file://`.
+Publish **`dist/`** to an HTTPS static host, including `assets/`, `icons/`, `licenses/`, `sw.js` and `manifest.webmanifest`. No secrets or server environment variables are needed; account sync is optional and configured by two public build-time variables (see [Accounts and sync](#accounts-and-sync)). Hash routing (`/#/practice`, `/#/collection`, etc.) needs no application-route rewrite rules. Serve the build over HTTP(S), not `file://`.
 
 For a subdirectory deployment, set the Vite base at build time:
 
@@ -139,7 +165,7 @@ Publish `dist/` at `/kanjipain/`. Keep the origin stable; moving to another orig
 
 Catalog data is a transformed KANJIDIC2 extract, attributed to **James William Breen and EDRDG**, under **CC BY-SA 4.0**, separate from any application-code license. Stroke data for checking drawings and showing stroke order is a transformed KanjiVG extract (about 6,700 characters, loaded in parts as custom decks need them), © **Ulrich Apel**, under **CC BY-SA 3.0**. Component hints, the look-alike list and the app icon are also derived from KanjiVG. Japanese glyphs use bundled **Noto Sans JP**, under **SIL OFL 1.1**. The in-app Sources & licenses page ships the attribution, transformation notice, dates, hashes, and license copies. See [DATA_SOURCES.md](./DATA_SOURCES.md) for provenance and monthly/pre-release maintenance.
 
-The handwriting checker verifies a drawing against the one expected character; it does not recognize arbitrary handwriting, and its thresholds are calibrated on simulated hand error, not yet on collected real handwriting. Version 1 does not provide a full reading/vocabulary curriculum, promise curated mnemonics for every character, or sync accounts. Component hints are generated, not reviewed: they name parts by position and can be terse ("Top: 5 strokes"). Dictionary cues can be ambiguous; use the local pause/resume workflow rather than treating ambiguity as a recall failure. The catalog now loads as its own chunk; the main script (React, router, Zod, Dexie and the app, about 680 kB) still produces a non-fatal Vite chunk-size warning.
+The handwriting checker verifies a drawing against the one expected character; it does not recognize arbitrary handwriting, and its thresholds are calibrated on simulated hand error, not yet on collected real handwriting. Version 1 does not provide a full reading/vocabulary curriculum, or promise curated mnemonics for every character. Component hints are generated, not reviewed: they name parts by position and can be terse ("Top: 5 strokes"). Dictionary cues can be ambiguous; use the local pause/resume workflow rather than treating ambiguity as a recall failure. The catalog now loads as its own chunk; the main script (React, router, Zod, Dexie and the app, about 680 kB) still produces a non-fatal Vite chunk-size warning.
 
 Dependency audit at handoff (2026-11-14): `npm audit` reports 9 moderate findings in the development-only ESLint/TypeScript-ESLint/minimatch chain; `npm audit --omit=dev` reports zero. Review toolchain updates separately rather than running `npm audit fix --force` against the pinned stack.
 

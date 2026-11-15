@@ -264,11 +264,10 @@ test('flagging ambiguity pauses the card and resuming keeps its original due dat
 
   await page.getByRole('button', { name: 'Resume this character' }).click();
   await expect(page.getByText(/Pause cleared/)).toBeVisible();
-  const dueAfter = await page
-    .locator('.character-facts div', { hasText: 'Next review' })
-    .locator('dd')
-    .textContent();
-  expect(dueAfter).toBe(dueBefore);
+  // The notice shows before the stored card is read again, so wait for the fact to update.
+  await expect(
+    page.locator('.character-facts div', { hasText: 'Next review' }).locator('dd'),
+  ).toHaveText(dueBefore ?? '');
 });
 
 test('after assets load, a complete session works with the network disabled', async ({

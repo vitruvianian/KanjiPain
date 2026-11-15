@@ -1,5 +1,6 @@
 import type { Clock } from '../domain/clock';
 import { MAX_DECK_ENTRIES, MAX_DECKS } from '../domain/deck-import';
+import { systemIdSource, type IdSource } from '../domain/ids';
 import { STANDARD_DECK_ID, type SettingsRecord, type UnixMs } from '../domain/types';
 import type { CatalogRepository } from './catalog';
 import type { KanjiPainDatabase } from '../storage/database';
@@ -13,6 +14,7 @@ import {
   type BackupEnvelope,
 } from '../storage/backup-schema';
 import { InvalidPersistedDataError, mapStorageError } from '../storage/errors';
+import { noteProgressReplaced } from './sync/sync-state';
 
 export const MAX_BACKUP_BYTES = 25 * 1024 * 1024;
 /** Scheduled reviews after the last backup before the Dojo suggests exporting another. */
@@ -78,6 +80,7 @@ export interface BackupServiceDependencies {
   readonly database: KanjiPainDatabase;
   readonly catalog: CatalogRepository;
   readonly clock: Clock;
+  readonly ids?: IdSource;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -305,11 +308,13 @@ export class BackupService {
   readonly #database: KanjiPainDatabase;
   readonly #catalog: CatalogRepository;
   readonly #clock: Clock;
+  readonly #ids: IdSource;
 
-  constructor({ database, catalog, clock }: BackupServiceDependencies) {
+  constructor({ database, catalog, clock, ids = systemIdSource }: BackupServiceDependencies) {
     this.#database = database;
     this.#catalog = catalog;
     this.#clock = clock;
+    this.#ids = ids;
   }
 
   async createExport(): Promise<BackupEnvelope> {
@@ -483,12 +488,15 @@ export class BackupService {
           this.#database.decks,
           this.#database.deckEntries,
           this.#database.meta,
+          this.#database.syncShadow,
         ],
         async () => {
           const active = await this.#database.sessions.where('status').equals('active').first();
           if (active !== undefined) {
             throw new BackupActiveSessionError(active.id);
           }
+          // With an account, a restore replaces the cloud copy too instead of merging into it.
+          await noteProgressReplaced(this.#database, this.#ids);
 
           // The restored progress is exactly what the file holds, so it is backed up as of
           // the moment the file was made.

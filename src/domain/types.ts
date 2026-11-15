@@ -208,3 +208,13 @@ export interface MetaRecord {
   version: number;
   value: unknown;
 }
+
+/**
+ * The cloud copy of one synced record as this device last saw it. A record whose current
+ * fingerprint differs has changed locally and still has to be uploaded.
+ */
+export interface SyncShadowRecord {
+  /** `${collection}/${id}` */
+  key: string;
+  fingerprint: string;
+}

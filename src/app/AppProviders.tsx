@@ -12,6 +12,9 @@ import { DraftSaveQueue } from '../services/draft-save-queue';
 import { createReviewService } from '../services/review-service';
 import { createSessionService } from '../services/session-service';
 import { createSettingsService } from '../services/settings-service';
+import type { SyncBackend } from '../services/sync/remote-store';
+import { createSyncEngine } from '../services/sync/sync-engine';
+import { createSyncService, type SyncService } from '../services/sync/sync-service';
 import {
   createDatabase,
   DEFAULT_DATABASE_NAME,
@@ -21,12 +24,15 @@ import {
 import { StorageError } from '../storage/errors';
 import { createStorageRepositories } from '../storage/repositories';
 import { AppServicesContext, type AppServices } from './app-services-context';
+import { configuredSyncBackend } from './sync-config';
 
 interface AppProvidersProps {
   children: ReactNode;
   databaseName?: string;
   databaseFactory?: (name: string) => KanjiPainDatabase;
   catalogLoader?: () => CatalogRepository | Promise<CatalogRepository>;
+  /** Sign-in and cloud storage; null turns account sync off. Defaults to the build's setup. */
+  syncBackendLoader?: (() => Promise<SyncBackend>) | null;
 }
 
 interface StartupAttemptProps extends Omit<AppProvidersProps, 'databaseName'> {
@@ -50,6 +56,7 @@ function StartupAttempt({
   databaseName,
   databaseFactory = createDatabase,
   catalogLoader = loadBundledCatalog,
+  syncBackendLoader = configuredSyncBackend,
   onRetry,
 }: StartupAttemptProps) {
   const [services, setServices] = useState<AppServices | null>(null);
@@ -57,6 +64,7 @@ function StartupAttempt({
 
   useEffect(() => {
     let active = true;
+    let sync: SyncService | undefined;
     const database = databaseFactory(databaseName);
 
     const start = async () => {
@@ -94,7 +102,19 @@ function StartupAttempt({
           });
           // Newer stroke data may cover characters that were unrecognized when imported.
           void decks.recheckStrokes().catch(() => undefined);
+          sync = createSyncService({
+            database,
+            engine: createSyncEngine({
+              database,
+              scheduler,
+              clock: systemClock,
+              ids: systemIdSource,
+            }),
+            loadBackend: syncBackendLoader,
+          });
+          void sync.start();
           setServices({
+            sync,
             catalog,
             decks,
             storage,
@@ -115,9 +135,10 @@ function StartupAttempt({
     void start();
     return () => {
       active = false;
+      sync?.stop();
       database.close();
     };
-  }, [catalogLoader, databaseFactory, databaseName]);
+  }, [catalogLoader, databaseFactory, databaseName, syncBackendLoader]);
 
   if (startupError !== null) {
     return (
@@ -154,6 +175,7 @@ export function AppProviders({
   databaseName = DEFAULT_DATABASE_NAME,
   databaseFactory = createDatabase,
   catalogLoader = loadBundledCatalog,
+  syncBackendLoader = configuredSyncBackend,
 }: AppProvidersProps) {
   const [retryCount, setRetryCount] = useState(0);
 
@@ -163,6 +185,7 @@ export function AppProviders({
       databaseName={databaseName}
       databaseFactory={databaseFactory}
       catalogLoader={catalogLoader}
+      syncBackendLoader={syncBackendLoader}
       onRetry={() => {
         setRetryCount((count) => count + 1);
       }}
