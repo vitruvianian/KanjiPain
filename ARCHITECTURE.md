@@ -62,7 +62,8 @@ FSRS estimates scheduling needs; it does not measure a person's memory directly.
    generated service worker and web manifest; the page is fetched network-first.)
 5. Optional handwriting recognition with user override. (Done as verification
    against the expected character, see `src/recognition/`.)
-6. Optional accounts, cross-device synchronization, and placement assessment.
+6. Optional accounts and cross-device synchronization. (Done: see "Account sync" in
+   section 10.) Placement assessment is still open.
 
 Version 1 checks drawn characters against the expected form, including stroke
 order and direction, as a suggestion the learner can override. It does **not** pretend to provide complete vocabulary teaching, or curated hints for every
@@ -78,7 +79,8 @@ One short onboarding panel explains:
 - “Compare honestly. A hint means this was an assisted recall.”
 - “This first version trains written form. Reading cues help identify the target;
   seeing a cue does not demonstrate that you can read the character.”
-- “Progress is saved in this browser. Export a backup to move devices.”
+- “Progress is saved in this browser. Export a backup to move devices.” Builds with a
+  sync server add that signing in from Settings syncs progress across devices.
 
 Defaults: five new characters per local calendar day, twenty primary exercises per
 session, drawing mode. Settings may reduce new characters to zero or increase to
@@ -290,6 +292,7 @@ does not enroll it or update scheduling.
 | Browser tests              | Playwright: Chromium; WebKit for practice      | Verify actual drawing, reloads, and IndexedDB behavior        |
 | Code quality               | ESLint flat config + Prettier + TypeScript     | Explicit repeatable checks                                    |
 | Hosting                    | Static `dist/` on any HTTPS static host        | No server or recurring API costs required                     |
+| Account sync (optional)    | Supabase: auth + one Postgres table, free tier | Static hosting cannot store accounts; loaded only if set up   |
 | Data tooling               | Node scripts via tsx + fast-xml-parser         | Convert KANJIDIC2 once during content maintenance             |
 
 Choose compatible stable versions in the specified majors at bootstrap, pin exact
@@ -297,8 +300,9 @@ direct dependency versions, and commit `package-lock.json`. `ts-fsrs` is pinned
 specifically because version 6 uses a different API from version 5. Never copy old
 `fsrs()/repeat()` examples into the version 6 integration.
 
-There is no backend, authentication, global state library, analytics service,
-remote LLM, or neural handwriting model in version 1. Drawn attempts are verified
+There is no global state library, analytics service, remote LLM, or neural
+handwriting model in version 1. The only backend is the optional sync server
+(section 10, "Account sync"); a build without it makes no network requests of its own. Drawn attempts are verified
 locally against bundled reference strokes (`src/recognition/`); the verdict only
 suggests a grade. Local-first means progress is local
 and practice works without network requests once the app has loaded.
@@ -567,7 +571,7 @@ its own table. A session is small (maximum sixty exercises). Strokes are retaine
 only in the active draft, cleared on advancing to the next exercise, and omitted
 from history/backups. Version 1 does not provide a handwriting gallery.
 
-### IndexedDB tables (database `kanjipain`, version 2)
+### IndexedDB tables (database `kanjipain`, version 3)
 
 | Table           | Primary key and useful indexes                                   |
 | --------------- | ---------------------------------------------------------------- |
@@ -579,13 +583,16 @@ from history/backups. Version 1 does not provide a handwriting gallery.
 | `meta`          | singleton/versioned keys for app and backup metadata             |
 | `decks`         | `id` (custom decks only; the Standard deck is never stored)      |
 | `deckEntries`   | `id` = `deckId:kanjiId`, `deckId`, `kanjiId`                     |
+| `syncShadow`    | `key` = `collection/id`; fingerprint of the cloud's copy         |
 
 Do not index booleans in IndexedDB. Filter `suspended` in memory after querying the
 small due set. There is at most one active session, enforced by reading/creating
 sessions inside one read-write transaction on the sessions table.
 
 Version 2 added the two deck tables and `settings.activeDeckId`; the upgrade leaves
-cards, events and sessions untouched.
+cards, events and sessions untouched. Version 3 added `syncShadow` for account sync;
+it stays empty until someone signs in. The sync position and account live in `meta`
+under the key `sync`.
 
 ### Decks
 
@@ -607,7 +614,7 @@ cards, events and sessions untouched.
   `unrecognized`: no guide, no check, no `checkerVerdict`.
 
 Settings: `dailyNewLimit` (integer 0..10), `inputMode`, `onboardingCompleted`, `activeDeckId`.
-No user identity or timezone service is required. Timezone changes follow the
+No user identity or timezone service is required; an account is optional. Timezone changes follow the
 device's new local day; introduction caps are a convenience, not an anti-abuse rule.
 
 ## 9. Scheduler and session algorithms
@@ -757,6 +764,46 @@ must stay importable. The preview reports how many cards are outside every deck.
   offer export of current progress first. Replace all user tables in one transaction.
 - A different dataset content hash with the same schema and matching IDs is allowed;
   preserve history's original dataset metadata.
+
+### Account sync
+
+Optional, and absent from builds without `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`.
+IndexedDB stays the source of truth; sync is a background round that never runs inside a
+grade transaction and that practice never waits for (`src/services/sync/`).
+
+- **Server.** One table, `sync_records(user_id, generation, collection, id, data, deleted,
+device_id, seq)`, with row-level security limiting each invited user to their own rows
+  (`supabase/schema.sql`). The server stores JSON and numbers changes; it validates
+  nothing. Everything pulled is validated with the same Zod schemas as a backup, and an
+  unreadable record fails the round without applying any of it.
+- **Collections.** `sessions` (finished ones; an open session is uploaded as "ended so
+  far" and later revisions replace it), `events`, `issues`, `cards`, `decks` (a deck and
+  its entries as one record, with a tombstone when deleted), `settings` (daily limit,
+  onboarding, active deck). Drawings, input mode and theme stay on the device.
+- **Change detection.** No outbox: `syncShadow` holds a fingerprint of what the cloud is
+  known to hold for each record, and a round uploads whatever differs. No write path can
+  forget to queue a change. A deck in the shadow but not in the database was deleted here.
+- **A round** (`SyncEngine.sync`): pull every change after the stored position that
+  another device made, merge it in one transaction, then upload differences in the order
+  sessions, events, issues, cards, decks, settings, so references exist before what
+  refers to them.
+- **Merging** (`src/domain/sync-merge.ts`). Events, issues and finished sessions are
+  unions. A card unchanged here takes the cloud's copy. A card changed on both sides, or
+  one whose `scheduledReviewCount` is behind its scheduled events, is rebuilt by replaying
+  all its scheduled reviews in time order through the scheduler adapter; fuzz is off, so
+  every device computes the same state. A paused card stays paused if either side paused
+  it. A deck changed on both sides keeps the later `updatedAt`. Remote settings win.
+- **Open session.** A pull never replaces it. Pending items whose card another device
+  reviewed are skipped, the rest get the card's new version, and the session's revision
+  increases so an open practice screen reloads it. A session whose deck changed is ended.
+- **Generations.** Restoring a backup while signed in starts a new generation: the cloud
+  copy is replaced, and other devices replace their data at their next round instead of
+  merging. Deleting the cloud copy signs other devices out and leaves their data alone.
+- **Accounts.** A device remembers whose data it holds. Signing in with no previous
+  account merges local progress into the account; a different account must replace the
+  device's data first.
+- **Triggers.** Sign-in, app start, a change to any synced table (debounced), coming back
+  online and returning to the tab. Tabs take turns through the Web Locks API.
 
 ### Content/app updates
 

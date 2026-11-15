@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { useAppServices, useBackupStatus } from '../../app/useAppServices';
+import { useAppServices, useBackupStatus, useSyncStatus } from '../../app/useAppServices';
 import { Button } from '../../components/Button';
 import { formatDate } from '../format';
 
@@ -10,12 +10,14 @@ export function BackupStatusPanel() {
   const { backup } = useAppServices();
   const status = useBackupStatus();
   const [busy, setBusy] = useState(false);
+  // A signed-in account already holds a copy, so the nudge to export would be wrong.
+  const synced = useSyncStatus().kind === 'signed-in';
   if (status === undefined) return null;
 
   const reviews = status.reviewsSinceExport;
   return (
     <div className="backup-status">
-      {status.reminderDue ? (
+      {status.reminderDue && !synced ? (
         <div className="banner banner--warning" role="status">
           <p>
             <strong>Time for a backup.</strong>{' '}
@@ -46,6 +48,7 @@ export function BackupStatusPanel() {
         {status.lastExportAt === null
           ? 'No backup exported from this browser yet.'
           : `Last backup: ${formatDate(status.lastExportAt)}.`}{' '}
+        {synced ? 'Progress also syncs with your account. ' : null}
         <Link to="/settings">Backups in Settings</Link>
       </p>
     </div>
