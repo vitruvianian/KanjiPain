@@ -81,7 +81,7 @@ describe('custom decks', () => {
 
     expect(await screen.findByText('Import saved: 2 added, 0 merged.')).toBeInTheDocument();
     expect(await screen.findByText(/1 character without stroke data/)).toBeInTheDocument();
-    expect(screen.getByText(/2 characters need a meaning or reading/)).toBeInTheDocument();
+    expect(await screen.findByText(/2 characters need a meaning or reading/)).toBeInTheDocument();
 
     // A cue that gives the answer away is refused; a real one makes the entry practicable.
     await user.click(screen.getByRole('button', { name: 'Edit ☃' }));
@@ -93,7 +93,7 @@ describe('custom decks', () => {
     await user.type(within(editor).getByLabelText(/Meanings/), 'snowman');
     await user.click(within(editor).getByRole('button', { name: 'Save entry' }));
     expect(await screen.findByText('Saved ☃.')).toBeInTheDocument();
-    expect(screen.getByText(/1 character needs a meaning or reading/)).toBeInTheDocument();
+    expect(await screen.findByText(/1 character needs a meaning or reading/)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Use this deck' }));
     await user.click(await screen.findByRole('link', { name: 'Practise in the Dojo' }));
@@ -102,7 +102,7 @@ describe('custom decks', () => {
     expect(await screen.findByRole('combobox', { name: 'Active deck' })).toHaveDisplayValue(
       'Pets (2)',
     );
-    expect(screen.getByText(/1 character needs a meaning or reading/)).toBeInTheDocument();
+    expect(await screen.findByText(/1 character needs a meaning or reading/)).toBeInTheDocument();
     await user.click(screen.getByRole('link', { name: 'Start practice' }));
 
     expect(await screen.findByRole('heading', { name: 'Meet the character' })).toBeInTheDocument();
