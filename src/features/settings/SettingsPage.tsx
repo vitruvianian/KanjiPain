@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { usePersistence } from '../../app/storage-persistence';
@@ -12,14 +12,26 @@ import {
 } from '../../app/useAppServices';
 import { Button } from '../../components/Button';
 import { localDayKey } from '../../domain/date';
-import type { InputMode, SettingsRecord } from '../../domain/types';
+import {
+  REVIEW_PACES,
+  type InputMode,
+  type ReviewPace,
+  type SettingsRecord,
+} from '../../domain/types';
 import { MAX_BACKUP_BYTES, type BackupPreview } from '../../services/backup-service';
 import { DeckSwitcher } from '../decks/DeckSwitcher';
-import { formatDateTime } from '../format';
+import { formatDateTime, formatInterval } from '../format';
 import { AccountPanel } from './AccountPanel';
 import { ImportPreview } from './ImportPreview';
 
 const NEW_LIMIT_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+
+const PACE_LABELS: Readonly<Record<ReviewPace, string>> = {
+  relaxed: 'Relaxed — fewest reviews',
+  steady: 'Steady',
+  frequent: 'Frequent — like Anki',
+  intensive: 'Intensive — most reviews',
+};
 
 function PreferencesForm({
   current,
@@ -30,12 +42,19 @@ function PreferencesForm({
   readonly notice: string | null;
   readonly onNotice: (notice: string | null) => void;
 }) {
-  const { settings: settingsService } = useAppServices();
+  const { settings: settingsService, reviews } = useAppServices();
+  const [reviewPace, setReviewPace] = useState<ReviewPace>(current.reviewPace);
+  const paceExample = useMemo(
+    () => reviews.exampleIntervals(reviewPace).map(formatInterval).join(' → '),
+    [reviews, reviewPace],
+  );
   const [dailyNewLimit, setDailyNewLimit] = useState(current.dailyNewLimit);
   const [inputMode, setInputMode] = useState<InputMode>(current.inputMode);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const dirty = dailyNewLimit !== current.dailyNewLimit || inputMode !== current.inputMode;
+  const paceChanged = reviewPace !== current.reviewPace;
+  const dirty =
+    dailyNewLimit !== current.dailyNewLimit || inputMode !== current.inputMode || paceChanged;
 
   const save = async () => {
     setBusy(true);
@@ -43,7 +62,14 @@ function PreferencesForm({
     onNotice(null);
     try {
       await settingsService.update({ dailyNewLimit, inputMode });
-      onNotice('Preferences saved. Cards, schedules, and today’s introductions were unchanged.');
+      if (paceChanged) {
+        const { rescheduled } = await settingsService.setReviewPace(reviewPace);
+        onNotice(
+          `Preferences saved. The new pace moved the next review of ${String(rescheduled)} learned ${rescheduled === 1 ? 'character' : 'characters'}; review history is unchanged.`,
+        );
+      } else {
+        onNotice('Preferences saved. Cards, schedules, and today’s introductions were unchanged.');
+      }
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : 'Preferences could not be saved. Try again.',
@@ -74,6 +100,26 @@ function PreferencesForm({
             {NEW_LIMIT_OPTIONS.map((option) => (
               <option key={option} value={String(option)}>
                 {String(option)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="field">
+          <span>Review pace</span>
+          <select
+            value={reviewPace}
+            onChange={(event) => {
+              const pace = REVIEW_PACES.find((option) => option === event.currentTarget.value);
+              if (pace !== undefined) {
+                setReviewPace(pace);
+                onNotice(null);
+              }
+            }}
+          >
+            {REVIEW_PACES.map((pace) => (
+              <option key={pace} value={pace}>
+                {PACE_LABELS[pace]}
               </option>
             ))}
           </select>
@@ -110,6 +156,12 @@ function PreferencesForm({
         </fieldset>
       </div>
 
+      <p className="muted" data-testid="pace-example">
+        Review pace decides how soon a character comes back. At this pace, a new character you get
+        right every time returns after: {paceExample}. A missed character always returns in your
+        next session, and one you recalled never returns the same day. Changing the pace moves the
+        next review of characters you have already learned.
+      </p>
       <p className="muted">
         A limit of 0 pauses new introductions. Due reviews continue normally. Existing active
         sessions keep their planned items.
@@ -450,7 +502,7 @@ export function SettingsPage() {
       </section>
 
       <PreferencesForm
-        key={`${String(settings.dailyNewLimit)}:${settings.inputMode}`}
+        key={`${String(settings.dailyNewLimit)}:${settings.inputMode}:${settings.reviewPace}`}
         current={settings}
         notice={preferencesNotice}
         onNotice={setPreferencesNotice}

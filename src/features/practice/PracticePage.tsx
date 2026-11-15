@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { useAppServices, useCard, useDeckContent } from '../../app/useAppServices';
+import { useAppServices, useCard, useDeckContent, useSettings } from '../../app/useAppServices';
 import { useNow } from '../../app/useNow';
 import { Button } from '../../components/Button';
 import { literalFromKanjiId } from '../../domain/ids';
@@ -35,6 +35,7 @@ export function PracticePage() {
   const { catalog, reviews } = useAppServices();
   const navigate = useNavigate();
   const now = useNow();
+  const settings = useSettings();
   const { session, loading, busy, error, notice, shortRematch, refresh, openNext } = practice;
 
   const phase = session?.phase;
@@ -49,8 +50,11 @@ export function PracticePage() {
     session?.primaryItems.some((item) => item.id === feedbackItemId) === true;
   // Shown on the grade buttons. A rematch never moves the card, so it has no preview.
   const gradePreview = useMemo(
-    () => (scheduled && card !== undefined ? reviews.previewGrades(card) : null),
-    [card, reviews, scheduled],
+    () =>
+      scheduled && card !== undefined && settings !== undefined
+        ? reviews.previewGrades(card, settings.reviewPace)
+        : null,
+    [card, reviews, scheduled, settings],
   );
   // A session keeps the deck it started with, whichever deck is active now.
   const content = useDeckContent(session?.deckId);

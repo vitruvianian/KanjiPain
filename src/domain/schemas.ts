@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { serializedFsrsCardSchema, serializedFsrsLogSchema } from '../scheduler/serialization';
 import { kanjiIdFromLiteral } from './ids';
-import { STANDARD_DECK_ID } from './types';
+import { LEGACY_REVIEW_PACE, REVIEW_PACES, STANDARD_DECK_ID } from './types';
 
 const nonBlankStringSchema = z.string().trim().min(1);
 const recordIdSchema = nonBlankStringSchema;
@@ -109,6 +109,8 @@ export const settingsRecordSchema = z.strictObject({
   onboardingCompleted: z.boolean(),
   // Absent in settings saved, or backed up, before decks existed.
   activeDeckId: nonBlankStringSchema.default(STANDARD_DECK_ID),
+  // Absent in settings saved, or backed up, before the pace could be chosen.
+  reviewPace: z.enum(REVIEW_PACES).default(LEGACY_REVIEW_PACE),
 });
 
 export const DECK_NAME_MAX = 80;

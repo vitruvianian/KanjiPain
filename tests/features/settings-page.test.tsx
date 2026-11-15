@@ -99,3 +99,21 @@ it('shows when the last backup was exported', async () => {
     'No backup exported from this browser yet.',
   );
 });
+
+it('explains each review pace with real intervals and saves the choice', async () => {
+  const user = userEvent.setup();
+  mountSettings();
+
+  const pace = await screen.findByLabelText('Review pace');
+  expect(pace).toHaveValue('frequent');
+  expect(screen.getByTestId('pace-example')).toHaveTextContent(/returns after: 1d → \d+d → /);
+
+  await user.selectOptions(pace, 'relaxed');
+  expect(screen.getByTestId('pace-example')).toHaveTextContent(/returns after: 5d → \d+d → /);
+
+  await user.click(screen.getByRole('button', { name: 'Save preferences' }));
+  expect(
+    await screen.findByText(/new pace moved the next review of 0 learned characters/),
+  ).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByLabelText('Review pace')).toHaveValue('relaxed'));
+});

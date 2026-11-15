@@ -621,7 +621,8 @@ under the key `sync`.
   so the default experience downloads nothing extra. A character with no stroke data is
   `unrecognized`: no guide, no check, no `checkerVerdict`.
 
-Settings: `dailyNewLimit` (integer 0..10), `inputMode`, `onboardingCompleted`, `activeDeckId`.
+Settings: `dailyNewLimit` (integer 0..10), `inputMode`, `onboardingCompleted`, `activeDeckId`,
+`reviewPace` (`relaxed | steady | frequent | intensive`).
 No user identity or timezone service is required; an account is optional. Timezone changes follow the
 device's new local day; introduction caps are a convenience, not an anti-abuse rule.
 
@@ -629,12 +630,12 @@ device's new local day; introduction caps are a convenience, not an anti-abuse r
 
 ### FSRS adapter
 
-Initialize once, asynchronously, using the version 6 API:
+Initialize once, asynchronously, using the version 6 API, one scheduler per review pace:
 
 ```ts
 const scheduler = await DefaultScheduler({
   version: 'FSRS-7',
-  desiredRetention: 0.9,
+  desiredRetention: RETENTION_BY_PACE[pace], // relaxed 0.90, steady 0.93, frequent 0.95, intensive 0.97
   enableShortTerm: false,
   enableFuzz: false,
   maximumInterval: 36_500,
@@ -645,6 +646,26 @@ Use `scheduler.newCard({ now })` and
 `scheduler.review({ card, grade: Rating.Good /* mapped grade */, now })`.
 Use the library's returned due date; do not implement your own interval formula or
 overwrite FSRS dates to force the rematch queue. No parameter optimization in v1.
+
+**Review pace.** `settings.reviewPace` chooses the retention target, and so how soon
+characters return. FSRS-7 is steep in this parameter: a new character always graded "Got
+it" returns after 5 days, 26 days, 3 months and 10 months at 0.90 (`relaxed`); 2, 9 and 28
+days at 0.93 (`steady`); 1, 4, 11 and 25 days at 0.95 (`frequent`, close to Anki's
+defaults); and 1, 1, 3, 6 and 11 days at 0.97 (`intensive`). New installations start
+on `frequent`; settings saved before the choice existed read as `relaxed`, the only pace
+there was, so nobody's schedule changes without them asking. The pace changes only due
+dates: stability and difficulty after a review are the same at every pace.
+
+One deliberate exception to "use the library's due date": a recalled character (Got it or
+Barely) is never due sooner than 24 hours later. The higher targets otherwise ask for it
+again within hours, which a once-a-day practice habit cannot use. A miss stays due at once.
+
+Changing the pace (`SettingsService.setReviewPace`) moves the next review of every learned
+character in one transaction, by replaying its scheduled reviews at the new pace
+(`rescheduleCard`). A card is left alone if it is paused, has no review yet, or its
+history does not reproduce its stored memory state. An open session is reconciled as it
+is after a sync. The pace syncs with the account, and the moved cards sync as ordinary
+card changes.
 
 Adapter surface:
 
@@ -787,7 +808,7 @@ device_id, seq)`, with row-level security limiting each invited user to their ow
 - **Collections.** `sessions` (finished ones; an open session is uploaded as "ended so
   far" and later revisions replace it), `events`, `issues`, `cards`, `decks` (a deck and
   its entries as one record, with a tombstone when deleted), `settings` (daily limit,
-  onboarding, active deck). Drawings, input mode and theme stay on the device.
+  onboarding, active deck, review pace). Drawings, input mode and theme stay on the device.
 - **Change detection.** No outbox: `syncShadow` holds a fingerprint of what the cloud is
   known to hold for each record, and a round uploads whatever differs. No write path can
   forget to queue a change. A deck in the shadow but not in the database was deleted here.

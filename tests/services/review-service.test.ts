@@ -201,7 +201,7 @@ describe('grade preview', () => {
     const card = await current.database.cards.get(feedback.phase.cardId);
     if (card === undefined) throw new Error('Fixture card is missing.');
 
-    const preview = current.reviews.previewGrades(card);
+    const preview = current.reviews.previewGrades(card, 'frequent');
 
     expect(preview).toEqual({
       now: current.clock.value,
@@ -232,6 +232,6 @@ describe('grade preview', () => {
       throw new Error('clock went backwards');
     });
 
-    expect(current.reviews.previewGrades(card)).toBeNull();
+    expect(current.reviews.previewGrades(card, 'frequent')).toBeNull();
   });
 });

@@ -1,4 +1,4 @@
-import type { Grade, UnixMs } from '../domain/types';
+import type { Grade, ReviewPace, UnixMs } from '../domain/types';
 
 export const FSRS_ADAPTER_VERSION = 1 as const;
 export const FSRS_PACKAGE_VERSION = '6.0.0' as const;
@@ -66,6 +66,8 @@ export interface SchedulerReviewInput {
   readonly card: SerializedFsrsCard;
   readonly grade: Grade;
   readonly now: UnixMs;
+  /** How soon the card should come back; the pace of old schedules when absent. */
+  readonly pace?: ReviewPace | undefined;
 }
 
 export interface SchedulerReviewResult {

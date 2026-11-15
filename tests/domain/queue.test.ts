@@ -15,6 +15,7 @@ const settings: SettingsRecord = {
   inputMode: 'drawing',
   onboardingCompleted: true,
   activeDeckId: 'standard',
+  reviewPace: 'frequent',
 };
 
 describe('contrast drills', () => {
