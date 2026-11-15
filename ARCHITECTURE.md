@@ -167,6 +167,14 @@ modifier keys, and while a modal dialog is open, and hidden on touch devices.
 | Barely    | Correct without help, but hesitant | Hard             |
 | Missed it | Wrong, incomplete, or assisted     | Again            |
 
+Each grade button shows, beneath its label, how long until the character would come
+back if that grade were chosen ("5d", "14h", "<1m"), as flashcard apps do. The values come
+from `ReviewService.previewGrades`, which asks the scheduler adapter without saving; the
+component only formats them. A rematch has no preview, because it never moves the card,
+and says so with the review date already set. The character page gives the next review
+as a distance and a date ("In 5 days (…)"), and a Collection tile of a learned character
+that is not yet due ends with the same short interval.
+
 `Easy` is deliberately not exposed. With assistance or an explicit surrender,
 disable Got it/Barely and explain “Assisted recall — we'll practice this again.”
 Show a `Continue — practice again` action that commits `missed`.

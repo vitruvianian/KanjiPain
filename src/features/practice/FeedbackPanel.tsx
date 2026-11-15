@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 
 import { useKeyboardShortcuts } from '../../app/useKeyboardShortcuts';
 import { AnswerGlyph } from '../../components/AnswerGlyph';
@@ -8,9 +8,11 @@ import { Lookalikes, type LookalikeItem } from '../../components/Lookalikes';
 import { UnrecognizedWarning } from '../../components/UnrecognizedWarning';
 import { DrawingPad } from '../../components/DrawingPad';
 import type { FeedbackPhase } from '../../domain/session-types';
-import type { CheckerVerdict, Grade, KanjiId, StudyEntry } from '../../domain/types';
+import type { CheckerVerdict, Grade, KanjiId, StudyEntry, UnixMs } from '../../domain/types';
 import { checkDrawing, suggestedGrade, type CheckResult } from '../../recognition/check';
 import { useReferenceStrokes } from '../../recognition/useReferenceStrokes';
+import type { GradePreview } from '../../services/review-service';
+import { formatDueIn, formatInterval } from '../format';
 
 interface FeedbackPanelProps {
   readonly phase: FeedbackPhase;
@@ -21,6 +23,10 @@ interface FeedbackPanelProps {
   /** Characters easily confused with this one, to compare it against. */
   readonly lookalikes?: readonly LookalikeItem[];
   readonly literalOf: (id: KanjiId) => string | undefined;
+  /** When the character would come back after each grade; absent when grading does not reschedule it. */
+  readonly gradePreview?: GradePreview | null | undefined;
+  /** For a rematch: the review date already set, which no grade here changes. */
+  readonly unchangedDue?: { readonly dueAt: UnixMs; readonly now: UnixMs } | undefined;
   readonly onGrade: (grade: Grade, checkerVerdict?: CheckerVerdict) => void;
   readonly onFlagAmbiguous: () => void;
 }
@@ -109,9 +115,12 @@ export function FeedbackPanel({
   extraReferenceIds,
   lookalikes = [],
   literalOf,
+  gradePreview,
+  unchangedDue,
   onGrade,
   onFlagAmbiguous,
 }: FeedbackPanelProps) {
+  const intervalId = useId();
   const { draft } = phase;
   const assisted = draft.surrendered || draft.hintKeysUsed.length > 0;
   const references = useReferenceStrokes(extraReferenceIds);
@@ -245,6 +254,11 @@ export function FeedbackPanel({
               <p className="assistance-note">
                 Assisted recall — we&apos;ll practice this again. A hint or a reveal means this
                 attempt counts as a miss.
+                {gradePreview == null
+                  ? ''
+                  : gradePreview.dueAt.missed <= gradePreview.now
+                    ? ' It stays due and returns in your next session.'
+                    : ` Its next review will be ${formatDueIn(gradePreview.dueAt.missed, gradePreview.now)}.`}
               </p>
               <Button
                 variant="primary"
@@ -298,18 +312,47 @@ export function FeedbackPanel({
                     {...(grade === (suggestion ?? 'got') ? { variant: 'primary' as const } : {})}
                     disabled={busy}
                     aria-keyshortcuts={String(index + 1)}
+                    aria-describedby={gradePreview == null ? undefined : `${intervalId}-${grade}`}
+                    className={gradePreview == null ? '' : 'button--grade'}
                     onClick={() => {
                       choose(grade);
                     }}
                   >
                     {GRADE_LABELS[grade]}
+                    {gradePreview == null ? null : (
+                      // Kept out of the button's name; screen readers get a sentence instead.
+                      <span className="grade-interval" aria-hidden="true">
+                        {formatInterval(gradePreview.dueAt[grade] - gradePreview.now)}
+                      </span>
+                    )}
                   </Button>
                 ))}
               </div>
+              {gradePreview == null ? null : (
+                <>
+                  {(['got', 'barely', 'missed'] as const).map((grade) => (
+                    <span key={grade} id={`${intervalId}-${grade}`} hidden>
+                      Next review {formatDueIn(gradePreview.dueAt[grade], gradePreview.now)}.
+                    </span>
+                  ))}
+                  <p className="muted">
+                    Under each grade: how long until this character comes back if you choose it.
+                  </p>
+                </>
+              )}
               <p className="muted shortcut-hint">
                 Keyboard: <kbd>1</kbd> Got it, <kbd>2</kbd> Barely, <kbd>3</kbd> Missed it.
               </p>
             </>
+          )}
+          {unchangedDue === undefined ? null : (
+            <p className="muted">
+              This is a rematch, so no grade changes the schedule: the next review stays{' '}
+              {unchangedDue.dueAt <= unchangedDue.now
+                ? 'due now'
+                : formatDueIn(unchangedDue.dueAt, unchangedDue.now)}
+              .
+            </p>
           )}
           <p className="muted">
             Got it: correct without extra help. Barely: correct but hesitant. Missed it: wrong,

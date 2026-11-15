@@ -22,6 +22,13 @@ test('draws a real character, grades it, and finishes with a summary', async ({ 
   await page.getByRole('button', { name: 'Compare answer' }).click();
   await expect(page.getByRole('heading', { name: 'The character was' })).toBeVisible();
   await expect(page.getByRole('img', { name: 'Your submitted drawing' })).toBeVisible();
+  // Each grade says how long until the character would come back.
+  await expect(page.getByRole('button', { name: 'Got it', exact: true })).toContainText(
+    /^Got it\d+(\.\d)?(m|h|d|mo)$/,
+  );
+  await expect(page.getByRole('button', { name: 'Missed it', exact: true })).toContainText(
+    /^Missed it(<1m|\d+(m|h|d))$/,
+  );
 
   await gradeGotItDespiteChecker(page);
   await expect(page.getByRole('heading', { name: 'Meet the character' })).toBeVisible();

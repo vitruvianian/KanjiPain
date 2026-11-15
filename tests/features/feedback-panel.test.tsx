@@ -222,3 +222,62 @@ describe('FeedbackPanel keyboard and look-alikes', () => {
     expect(screen.getByText('two')).toBeInTheDocument();
   });
 });
+
+describe('FeedbackPanel next-review preview', () => {
+  const HOUR = 3_600_000;
+  const DAY = 24 * HOUR;
+  const now = 1_800_000_000_000;
+
+  function renderWith(
+    props: Partial<Parameters<typeof FeedbackPanel>[0]>,
+    feedback = phase([], 'paper'),
+  ) {
+    render(
+      <FeedbackPanel
+        phase={feedback}
+        entry={one}
+        busy={false}
+        literalOf={(id) => catalog.byId(id)?.literal}
+        onGrade={vi.fn()}
+        onFlagAmbiguous={vi.fn()}
+        {...props}
+      />,
+    );
+  }
+
+  it('shows on each grade when the character would come back, without renaming the buttons', () => {
+    renderWith({
+      gradePreview: {
+        now,
+        dueAt: { got: now + 4 * DAY, barely: now + 2 * DAY, missed: now + 10 * 60_000 },
+      },
+    });
+
+    const got = screen.getByRole('button', { name: 'Got it' });
+    expect(got).toHaveTextContent('4d');
+    expect(got).toHaveAccessibleDescription('Next review in 4 days.');
+    expect(screen.getByRole('button', { name: 'Barely' })).toHaveTextContent('2d');
+    const missed = screen.getByRole('button', { name: 'Missed it' });
+    expect(missed).toHaveTextContent('10m');
+    expect(missed).toHaveAccessibleDescription('Next review in 10 minutes.');
+  });
+
+  it('tells an assisted attempt when it returns', () => {
+    const assisted = phase([], 'paper');
+    renderWith(
+      {
+        gradePreview: { now, dueAt: { got: now + 4 * DAY, barely: now + DAY, missed: now + DAY } },
+      },
+      { ...assisted, draft: { ...assisted.draft, hintKeysUsed: ['stroke-count'] } },
+    );
+
+    expect(screen.getByText(/Its next review will be in 1 day\./)).toBeInTheDocument();
+  });
+
+  it('says a rematch leaves the schedule alone and shows no intervals', () => {
+    renderWith({ unchangedDue: { dueAt: now + 5 * HOUR, now } });
+
+    expect(screen.getByText(/no grade changes the schedule/)).toHaveTextContent('in 5 hours');
+    expect(screen.getByRole('button', { name: 'Got it' })).toHaveTextContent(/^Got it$/);
+  });
+});

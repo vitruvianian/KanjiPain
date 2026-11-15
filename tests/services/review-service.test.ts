@@ -192,3 +192,46 @@ describe('ambiguity and paused cards', () => {
     expect(resumed).toMatchObject({ suspended: false, version: after.version + 1 });
   });
 });
+
+describe('grade preview', () => {
+  it('reports the due date each grade would give without saving anything', async () => {
+    const current = await harness('preview');
+    const feedback = await revealDrawnPrompt(current);
+    if (feedback.phase.kind !== 'feedback') throw new Error('Fixture did not reach feedback.');
+    const card = await current.database.cards.get(feedback.phase.cardId);
+    if (card === undefined) throw new Error('Fixture card is missing.');
+
+    const preview = current.reviews.previewGrades(card);
+
+    expect(preview).toEqual({
+      now: current.clock.value,
+      dueAt: {
+        got: current.clock.value + 86_400_000,
+        barely: current.clock.value + 86_400_000,
+        missed: current.clock.value + 60_000,
+      },
+    });
+    await expect(current.database.cards.get(card.id)).resolves.toEqual(card);
+    await expect(current.database.events.count()).resolves.toBe(0);
+
+    // The preview is what grading then does.
+    const result = await current.reviews.commitGrade(gradeInput(feedback, 'got'));
+    await expect(current.database.cards.get(card.id)).resolves.toMatchObject({
+      dueAt: preview?.dueAt.got,
+    });
+    expect(result.event.grade).toBe('got');
+  });
+
+  it('gives no preview when the scheduler refuses the review', async () => {
+    const current = await harness('preview-refused');
+    const feedback = await revealDrawnPrompt(current);
+    if (feedback.phase.kind !== 'feedback') throw new Error('Fixture did not reach feedback.');
+    const card = await current.database.cards.get(feedback.phase.cardId);
+    if (card === undefined) throw new Error('Fixture card is missing.');
+    current.scheduler.review.mockImplementation(() => {
+      throw new Error('clock went backwards');
+    });
+
+    expect(current.reviews.previewGrades(card)).toBeNull();
+  });
+});

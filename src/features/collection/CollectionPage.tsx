@@ -11,6 +11,7 @@ import {
   useDecks,
 } from '../../app/useAppServices';
 import { useNow } from '../../app/useNow';
+import { formatDueIn, formatInterval } from '../format';
 import { Button } from '../../components/Button';
 import { literalFromKanjiId } from '../../domain/ids';
 import { deriveCharacterStatus } from '../../domain/status';
@@ -227,8 +228,15 @@ export function CollectionPage() {
       ) : (
         <ol className="collection-grid" aria-label="Characters">
           {visible.map(({ entry, status }) => {
-            const statusText = characterStatusLabel(status);
-            const label = `${entry.literal}, ${entry.meanings.join(', ')}. ${statusText}.`;
+            const card = cardsByKanjiId.get(entry.id);
+            // A learned character that is not due yet says how long until it is.
+            const upcoming = card !== undefined && !card.suspended && card.dueAt > now;
+            const statusText = upcoming
+              ? `${characterStatusLabel(status)} · ${formatInterval(card.dueAt - now)}`
+              : characterStatusLabel(status);
+            const label = `${entry.literal}, ${entry.meanings.join(', ')}. ${characterStatusLabel(status)}.${
+              upcoming ? ` Next review ${formatDueIn(card.dueAt, now)}.` : ''
+            }`;
             return (
               <li key={entry.id}>
                 <Link className={tileClass(status)} to={`/kanji/${entry.id}`} title={label}>

@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useAppServices, useCard, useDeckContent } from '../../app/useAppServices';
+import { useNow } from '../../app/useNow';
 import { Button } from '../../components/Button';
 import { literalFromKanjiId } from '../../domain/ids';
 import { FeedbackPanel } from './FeedbackPanel';
@@ -31,8 +32,9 @@ const MODE_LABELS: Readonly<Record<Exclude<SessionMode, 'regular'>, string>> = {
 export function PracticePage() {
   const [searchParams] = useSearchParams();
   const practice = usePracticeSession(modeFrom(searchParams.get('mode')));
-  const { catalog } = useAppServices();
+  const { catalog, reviews } = useAppServices();
   const navigate = useNavigate();
+  const now = useNow();
   const { session, loading, busy, error, notice, shortRematch, refresh, openNext } = practice;
 
   const phase = session?.phase;
@@ -41,6 +43,15 @@ export function PracticePage() {
       ? phase.cardId
       : '';
   const card = useCard(phaseCardId);
+  const feedbackItemId = phase?.kind === 'feedback' ? phase.itemId : undefined;
+  const scheduled =
+    feedbackItemId !== undefined &&
+    session?.primaryItems.some((item) => item.id === feedbackItemId) === true;
+  // Shown on the grade buttons. A rematch never moves the card, so it has no preview.
+  const gradePreview = useMemo(
+    () => (scheduled && card !== undefined ? reviews.previewGrades(card) : null),
+    [card, reviews, scheduled],
+  );
   // A session keeps the deck it started with, whichever deck is active now.
   const content = useDeckContent(session?.deckId);
   const extraReferenceIds = useMemo(
@@ -204,6 +215,8 @@ export function PracticePage() {
           extraReferenceIds={extraReferenceIds}
           lookalikes={lookalikes}
           literalOf={literalFromKanjiId}
+          gradePreview={gradePreview}
+          unchangedDue={scheduled || card === undefined ? undefined : { dueAt: card.dueAt, now }}
           onGrade={(grade, checkerVerdict) => {
             void practice.grade(grade, checkerVerdict);
           }}
