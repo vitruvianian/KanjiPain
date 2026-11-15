@@ -77,7 +77,9 @@ test('settings persist across reloads without resetting today’s introductions'
   await page.getByRole('button', { name: "I don't know" }).click();
   await page.getByRole('button', { name: 'Continue — practice again' }).click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.getByRole('button', { name: 'Finish session' }).click();
+  // With nothing else queued, a short rematch is offered with its own "Finish session";
+  // the one in the header is there either way.
+  await page.getByRole('button', { name: 'Finish session' }).first().click();
   await expect(page.getByRole('heading', { name: 'Session summary' })).toBeVisible();
   await expect(page.locator('.metric', { hasText: 'New characters introduced' })).toContainText(
     '1',
