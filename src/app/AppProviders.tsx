@@ -121,7 +121,7 @@ function StartupAttempt({
             sessions,
             reviews,
             contentIssues: createContentIssueService({ database }),
-            settings: createSettingsService({ database }),
+            settings: createSettingsService({ database, scheduler, clock: systemClock }),
             backup: createBackupService({ database, catalog, clock: systemClock }),
           });
         }

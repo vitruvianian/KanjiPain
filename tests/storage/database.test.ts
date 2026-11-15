@@ -147,6 +147,7 @@ describe('database initialization', () => {
       inputMode: 'paper',
       onboardingCompleted: true,
       activeDeckId: 'standard',
+      reviewPace: 'frequent',
     };
     await database.settings.put(customSettings);
 
@@ -200,6 +201,7 @@ describe('storage repositories', () => {
       inputMode: 'drawing',
       onboardingCompleted: false,
       activeDeckId: 'standard',
+      reviewPace: 'frequent',
     });
     const repository = createStorageRepositories(database);
 
@@ -257,6 +259,7 @@ describe('transactions', () => {
       inputMode: 'paper',
       onboardingCompleted: true,
       activeDeckId: 'standard',
+      reviewPace: 'relaxed',
     });
     await expect(migrated.cards.toArray()).resolves.toEqual([legacyCard]);
     await expect(migrated.decks.count()).resolves.toBe(0);

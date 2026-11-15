@@ -1,7 +1,7 @@
 import { DefaultScheduler, Rating, type Grade as FsrsGrade } from 'ts-fsrs';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import type { Grade } from '../../src/domain/types';
+import { REVIEW_PACES, type Grade, type ReviewPace } from '../../src/domain/types';
 import { FsrsClockRollbackError, initializeFsrsAdapter } from '../../src/scheduler/fsrs-adapter';
 import {
   deserializeFsrsCard,
@@ -15,6 +15,7 @@ import type { SchedulerAdapter } from '../../src/scheduler/types';
 const createdAt = Date.parse('2026-01-02T03:04:05.678Z');
 const secondReviewAt = Date.parse('2026-01-12T03:04:05.678Z');
 const cardId = 'k-6e56:production';
+const DAY = 86_400_000;
 
 const directSchedulerOptions = {
   version: 'FSRS-7' as const,
@@ -87,7 +88,22 @@ describe('pinned FSRS adapter', () => {
 
     const actual = adapter.review({ card: initial, grade, now: createdAt });
 
-    expect(actual.card).toEqual(serializeFsrsCard(direct.card));
+    // The memory state is the library's own. The due date is too, except that a recalled
+    // card never comes back within a day.
+    const directCard = serializeFsrsCard(direct.card);
+    const floored = grade !== 'missed' && directCard.card.dueAt < createdAt + DAY;
+    expect(actual.card).toEqual(
+      floored
+        ? {
+            ...directCard,
+            card: {
+              ...directCard.card,
+              dueAt: createdAt + DAY,
+              scheduledDays: Math.max(directCard.card.scheduledDays, 1),
+            },
+          }
+        : directCard,
+    );
     expect(actual.log).toEqual(serializeFsrsLog(direct.revlog));
     expect(actual.log.revlog.rating).toBe(rating);
     expect(actual.dueAt).toBe(actual.card.card.dueAt);
@@ -194,5 +210,80 @@ describe('pinned FSRS adapter', () => {
         now: createdAt,
       }),
     ).toThrow();
+  });
+
+  describe('review pace', () => {
+    function intervalsInDays(pace: ReviewPace, count: number): number[] {
+      let now = createdAt;
+      let card = adapter.create({ cardId, now }).card;
+      const days: number[] = [];
+      for (let index = 0; index < count; index += 1) {
+        const result = adapter.review({ card, grade: 'got', now, pace });
+        days.push((result.dueAt - now) / DAY);
+        card = result.card;
+        now = result.dueAt;
+      }
+      return days;
+    }
+
+    it('keeps the schedule of earlier versions when no pace is given', () => {
+      const initial = adapter.create({ cardId, now: createdAt }).card;
+
+      expect(adapter.review({ card: initial, grade: 'got', now: createdAt })).toEqual(
+        adapter.review({ card: initial, grade: 'got', now: createdAt, pace: 'relaxed' }),
+      );
+    });
+
+    it('brings a recalled character back sooner at each faster pace', () => {
+      const first = REVIEW_PACES.map((pace) => intervalsInDays(pace, 4));
+      for (let step = 0; step < 4; step += 1) {
+        const atStep = first.map((days) => days[step] ?? 0);
+        expect([...atStep].sort((left, right) => right - left)).toEqual(atStep);
+      }
+      // The first review of a character graded "Got it": days away when relaxed, tomorrow
+      // when frequent.
+      expect(first[0]?.[0]).toBeGreaterThan(4);
+      expect(intervalsInDays('frequent', 1)).toEqual([1]);
+    });
+
+    it('spaces the frequent pace about like Anki: a day, a few days, over a week, weeks', () => {
+      const [first = 0, second = 0, third = 0, fourth = 0] = intervalsInDays('frequent', 4);
+      expect(first).toBe(1);
+      expect(second).toBeGreaterThan(2);
+      expect(second).toBeLessThan(6);
+      expect(third).toBeGreaterThan(6);
+      expect(third).toBeLessThan(16);
+      expect(fourth).toBeGreaterThan(14);
+      expect(fourth).toBeLessThan(40);
+    });
+
+    it('never brings a recalled character back the same day, and a miss at once', () => {
+      const initial = adapter.create({ cardId, now: createdAt }).card;
+      for (const pace of REVIEW_PACES) {
+        for (const grade of ['got', 'barely'] as const) {
+          const { dueAt, card } = adapter.review({ card: initial, grade, now: createdAt, pace });
+          expect(dueAt).toBeGreaterThanOrEqual(createdAt + DAY);
+          expect(card.card.dueAt).toBe(dueAt);
+        }
+        expect(
+          adapter.review({ card: initial, grade: 'missed', now: createdAt, pace }).dueAt,
+        ).toBeLessThan(createdAt + DAY);
+      }
+    });
+
+    it('does not let the pace change what is remembered about a card', () => {
+      const initial = adapter.create({ cardId, now: createdAt }).card;
+      const relaxed = adapter.review({ card: initial, grade: 'got', now: createdAt }).card.card;
+      const intensive = adapter.review({
+        card: initial,
+        grade: 'got',
+        now: createdAt,
+        pace: 'intensive',
+      }).card.card;
+
+      expect(intensive.stability).toBe(relaxed.stability);
+      expect(intensive.difficulty).toBe(relaxed.difficulty);
+      expect(intensive.dueAt).toBeLessThan(relaxed.dueAt);
+    });
   });
 });

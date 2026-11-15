@@ -108,12 +108,26 @@ export interface TeachingNote {
 
 export type TeachingNotes = Record<KanjiId, TeachingNote>;
 
+/**
+ * How soon characters come back, from fewest reviews to most. Each pace is a target for how
+ * likely a character should still be remembered when its review arrives: the higher the
+ * target, the sooner the review.
+ */
+export const REVIEW_PACES = ['relaxed', 'steady', 'frequent', 'intensive'] as const;
+export type ReviewPace = (typeof REVIEW_PACES)[number];
+
+/** The pace of every schedule made before the setting existed. */
+export const LEGACY_REVIEW_PACE: ReviewPace = 'relaxed';
+/** The pace a new learner starts with. */
+export const DEFAULT_REVIEW_PACE: ReviewPace = 'frequent';
+
 export interface SettingsRecord {
   id: 'user';
   dailyNewLimit: number;
   inputMode: InputMode;
   onboardingCompleted: boolean;
   activeDeckId: string;
+  reviewPace: ReviewPace;
 }
 
 export interface CardRecord {

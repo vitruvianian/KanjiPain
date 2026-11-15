@@ -22,6 +22,7 @@ import {
   sessionSnapshot,
 } from '../../domain/sync-merge';
 import {
+  REVIEW_PACES,
   STANDARD_DECK_ID,
   type CardRecord,
   type ContentIssue,
@@ -100,11 +101,15 @@ const deckBundleSchema = z
     message: 'Deck entries belong to another deck.',
   });
 const tombstoneSchema = z.strictObject({ deletedAt: unixMsSchema });
-const syncedSettingsSchema = settingsRecordSchema.pick({
-  dailyNewLimit: true,
-  onboardingCompleted: true,
-  activeDeckId: true,
-});
+const syncedSettingsSchema = settingsRecordSchema
+  .pick({
+    dailyNewLimit: true,
+    onboardingCompleted: true,
+    activeDeckId: true,
+  })
+  // Absent when written by a version of the app from before the pace could be chosen; this
+  // device then keeps its own pace instead of falling back to the old one.
+  .extend({ reviewPace: z.enum(REVIEW_PACES).optional() });
 type SyncedSettings = z.infer<typeof syncedSettingsSchema>;
 
 type RemoteDeck =
@@ -141,6 +146,7 @@ function syncedSettings(settings: SettingsRecord): SyncedSettings {
     dailyNewLimit: settings.dailyNewLimit,
     onboardingCompleted: settings.onboardingCompleted,
     activeDeckId: settings.activeDeckId,
+    reviewPace: settings.reviewPace,
   };
 }
 
@@ -626,6 +632,7 @@ export class SyncEngine {
           }
         }
       }
+      const pace = pull.settings?.reviewPace ?? (await database.settings.get('user'))?.reviewPace;
       const changedCards = new Map<string, CardRecord>();
       affectedIds.forEach((id, index) => {
         const local = localCards[index];
@@ -637,6 +644,7 @@ export class SyncEngine {
           localChanged: local !== undefined && cardShadows[index]?.fingerprint !== localMark,
           events: reviewsByCard.get(id) ?? [],
           scheduler: this.#scheduler,
+          pace,
         });
         if (remote !== undefined) {
           shadowPuts.set(shadowKey('cards', id), fingerprint(remote));
@@ -695,7 +703,11 @@ export class SyncEngine {
         let next: SettingsRecord = settings;
         if (pull.settings !== undefined) {
           shadowPuts.set(shadowKey('settings', 'user'), fingerprint(pull.settings));
-          next = { ...settings, ...pull.settings };
+          next = {
+            ...settings,
+            ...pull.settings,
+            reviewPace: pull.settings.reviewPace ?? settings.reviewPace,
+          };
         }
         if (
           next.activeDeckId !== STANDARD_DECK_ID &&

@@ -3,6 +3,7 @@ import Dexie, { type EntityTable } from 'dexie';
 import { settingsRecordSchema } from '../domain/schemas';
 import type { SessionRecord } from '../domain/session-types';
 import {
+  DEFAULT_REVIEW_PACE,
   STANDARD_DECK_ID,
   type CardRecord,
   type ContentIssue,
@@ -23,6 +24,7 @@ export const DEFAULT_SETTINGS: Readonly<SettingsRecord> = Object.freeze({
   inputMode: 'drawing',
   onboardingCompleted: false,
   activeDeckId: STANDARD_DECK_ID,
+  reviewPace: DEFAULT_REVIEW_PACE,
 });
 
 export class KanjiPainDatabase extends Dexie {
@@ -88,7 +90,11 @@ export async function initializeDatabase(database: KanjiPainDatabase): Promise<v
       if (!validation.success) {
         throw new InvalidPersistedDataError('settings', validation.error);
       }
-      if (currentSettings.activeDeckId !== validation.data.activeDeckId) {
+      // Fields added since these settings were saved get their defaults written back.
+      if (
+        currentSettings.activeDeckId !== validation.data.activeDeckId ||
+        currentSettings.reviewPace !== validation.data.reviewPace
+      ) {
         await database.settings.put(validation.data);
       }
     });

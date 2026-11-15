@@ -36,7 +36,18 @@ Open the URL printed by Vite. Dependencies are pinned in `package-lock.json`; or
    - Any requested hint, full-answer reveal, or **I don't know** makes the attempt assisted and forces a miss. Switching input modes or reloading cannot undo assistance. The service enforces this, not just the buttons.
 6. After a miss, repair is unscored. A rematch normally follows three distinct other card completions; short queues explicitly offer less-spaced practice. Each character gets at most two rematches per session.
 
-Only primary attempts update FSRS, including a new character's first graded check. Rematches record local practice but never alter the schedule or count as independent reviews. The adapter pins `ts-fsrs@6.0.0`, FSRS-7, desired retention 0.9, short-term scheduling off, fuzz off, and maximum interval 36,500 days.
+Only primary attempts update FSRS, including a new character's first graded check. Rematches record local practice but never alter the schedule or count as independent reviews. The adapter pins `ts-fsrs@6.0.0`, FSRS-7, short-term scheduling off, fuzz off, and maximum interval 36,500 days.
+
+**Review pace** (Settings → Practice preferences) decides how soon characters come back. For a new character you get right every time, the reviews come after:
+
+| Pace                                  | Reviews after                             | Retention target |
+| ------------------------------------- | ----------------------------------------- | ---------------- |
+| Relaxed                               | 5 days → 26 days → 3 months → 10 months   | 90%              |
+| Steady                                | 2 days → 9 days → 28 days → 2.4 months    | 93%              |
+| Frequent (the default, close to Anki) | 1 day → 4 days → 11 days → 25 days        | 95%              |
+| Intensive                             | 1 day → 1 day → 3 days → 6 days → 11 days | 97%              |
+
+A missed character returns in your next session at every pace, and a recalled one never returns the same day. Changing the pace moves the next review of the characters you have already learned; history is untouched. Progress made before this setting existed stays on Relaxed until you change it.
 
 Sessions prioritize due cards and have at most 20 primary exercises and 60 graded attempts including rematches.
 
@@ -89,7 +100,7 @@ Signing in (Settings → Account and sync) keeps the same progress and custom de
 - **Nothing is overwritten by a merge.** Reviews are separate records, so two devices' histories are combined. If both reviewed the same character while apart, its schedule is worked out again from all of its reviews in order. A custom deck keeps its later edit. A session left open on one device stays there; reviews already done elsewhere are dropped from it.
 - **Signing in merges** the progress already on the device into the account. A device that holds another account's progress asks before replacing it; two accounts are never mixed.
 - **Restoring a backup while signed in** replaces the cloud copy and, at their next sync, the progress on the other devices.
-- Synced: cards and schedules, review history, finished sessions, content issues, custom decks, the daily new-character limit and the active deck. Not synced: drawings, the drawing/paper preference, the theme.
+- Synced: cards and schedules, review history, finished sessions, content issues, custom decks, the daily new-character limit, the review pace and the active deck. Not synced: drawings, the drawing/paper preference, the theme.
 - "Delete cloud copy" removes the account's data from the server and signs out; every device keeps what it holds.
 
 ### Setting up the sync server (once, by whoever publishes the site)

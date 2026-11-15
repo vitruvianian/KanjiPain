@@ -1,5 +1,6 @@
 import type { SessionRecord } from './session-types';
-import type { CardRecord, ReviewEvent, UnixMs } from './types';
+import type { CardRecord, ReviewEvent, ReviewPace, UnixMs } from './types';
+import type { SchedulerCreateResult } from '../scheduler/types';
 import type { SchedulerAdapter } from '../scheduler/types';
 
 /**
@@ -55,6 +56,64 @@ export function scheduledReviews(
     .sort((left, right) => left.occurredAt - right.occurredAt || left.id.localeCompare(right.id));
 }
 
+/**
+ * A card's schedule worked out from scratch: introduced at `introducedAt`, then every review
+ * in order. The memory state depends only on the reviews; the pace decides the final due date.
+ */
+export function replayReviews(
+  cardId: string,
+  introducedAt: UnixMs,
+  reviews: readonly (ReviewEvent & { grade: NonNullable<ReviewEvent['grade']> })[],
+  scheduler: SchedulerAdapter,
+  pace: ReviewPace | undefined,
+): SchedulerCreateResult {
+  const created = scheduler.create({ cardId, now: introducedAt });
+  let state = created.card;
+  let dueAt = created.dueAt;
+  let previous = introducedAt;
+  for (const review of reviews) {
+    // Two devices' clocks can disagree; a review never counts as earlier than the one before.
+    previous = Math.max(previous, review.occurredAt);
+    const result = scheduler.review({ card: state, grade: review.grade, now: previous, pace });
+    state = result.card;
+    dueAt = result.dueAt;
+  }
+  return { card: state, dueAt };
+}
+
+/**
+ * The same card with its next review moved to where `pace` puts it, or the card unchanged
+ * when it has not been reviewed, is paused, or its history cannot reproduce its schedule.
+ * Reviews already done are not reinterpreted: only the date of the next one moves.
+ */
+export function rescheduleCard(
+  card: CardRecord,
+  events: readonly ReviewEvent[],
+  scheduler: SchedulerAdapter,
+  pace: ReviewPace,
+): CardRecord {
+  const reviews = scheduledReviews(card.id, events);
+  if (reviews.length === 0 || reviews.length !== card.scheduledReviewCount) {
+    return card;
+  }
+  const replayed = replayReviews(card.id, card.introducedAt, reviews, scheduler, pace);
+  const before = card.schedulerState.card;
+  const after = replayed.card.card;
+  const sameMemory =
+    Math.abs(after.stability - before.stability) <= 1e-9 * Math.max(1, before.stability) &&
+    Math.abs(after.difficulty - before.difficulty) <= 1e-9 &&
+    after.lastReviewAt === before.lastReviewAt;
+  if (!sameMemory || replayed.dueAt === card.dueAt) {
+    return card;
+  }
+  return {
+    ...card,
+    dueAt: replayed.dueAt,
+    schedulerState: replayed.card,
+    version: card.version + 1,
+  };
+}
+
 export interface MergeCardInput {
   /** This device's card; absent when only the other copy exists. */
   readonly local?: CardRecord | undefined;
@@ -65,6 +124,8 @@ export interface MergeCardInput {
   /** Every review of this card known after merging both histories. */
   readonly events: readonly ReviewEvent[];
   readonly scheduler: SchedulerAdapter;
+  /** The learner's review pace, which decides the due date a replay ends on. */
+  readonly pace?: ReviewPace | undefined;
 }
 
 /**
@@ -81,6 +142,7 @@ export function mergeCard({
   localChanged,
   events,
   scheduler,
+  pace,
 }: MergeCardInput): CardRecord | undefined {
   const base = local === undefined || (remote !== undefined && !localChanged) ? remote : local;
   if (base === undefined) {
@@ -104,18 +166,7 @@ export function mergeCard({
   }
 
   const origin = other !== undefined && other.introducedAt < base.introducedAt ? other : base;
-  let scheduled = scheduler.create({ cardId: base.id, now: origin.introducedAt });
-  let state = scheduled.card;
-  let dueAt = scheduled.dueAt;
-  let previous = origin.introducedAt;
-  for (const review of reviews) {
-    // Two devices' clocks can disagree; a review never counts as earlier than the one before.
-    previous = Math.max(previous, review.occurredAt);
-    const result = scheduler.review({ card: state, grade: review.grade, now: previous });
-    state = result.card;
-    dueAt = result.dueAt;
-  }
-  scheduled = { card: state, dueAt };
+  const scheduled = replayReviews(base.id, origin.introducedAt, reviews, scheduler, pace);
 
   return {
     id: base.id,

@@ -14,6 +14,7 @@ import type {
   ContentIssue,
   Grade,
   ReviewEvent,
+  ReviewPace,
   UnixMs,
 } from '../domain/types';
 import type { SchedulerAdapter } from '../scheduler/types';
@@ -199,10 +200,10 @@ export class ReviewService {
    * scheduled review moves a card; a rematch leaves its due date alone. Returns null when
    * the scheduler cannot review the card at this time (a device clock set back).
    */
-  previewGrades(card: CardRecord): GradePreview | null {
+  previewGrades(card: CardRecord, pace: ReviewPace): GradePreview | null {
     const now = this.#clock.now();
     const dueAfter = (grade: Grade) =>
-      this.#scheduler.review({ card: card.schedulerState, grade, now }).dueAt;
+      this.#scheduler.review({ card: card.schedulerState, grade, now, pace }).dueAt;
     try {
       return {
         now,
@@ -211,6 +212,23 @@ export class ReviewService {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * How a pace plays out for a new character that is recalled every time, reviewed each time
+   * on the day it comes due: the gaps between reviews, in milliseconds.
+   */
+  exampleIntervals(pace: ReviewPace, count = 5): number[] {
+    let now = this.#clock.now();
+    let card = this.#scheduler.create({ cardId: 'example', now }).card;
+    const intervals: number[] = [];
+    for (let index = 0; index < count; index += 1) {
+      const result = this.#scheduler.review({ card, grade: 'got', now, pace });
+      intervals.push(result.dueAt - now);
+      card = result.card;
+      now = result.dueAt;
+    }
+    return intervals;
   }
 
   async commitGrade(input: CommitGradeInput): Promise<CommitGradeResult> {
@@ -223,6 +241,7 @@ export class ReviewService {
         this.#database.events,
         this.#database.sessions,
         this.#database.contentIssues,
+        this.#database.settings,
         async () => {
           const existingRow = await this.#database.events.get(input.attemptId);
           if (existingRow !== undefined) {
@@ -259,7 +278,12 @@ export class ReviewService {
           const kind = item.type === 'primary' ? 'scheduled' : 'rematch';
           const scheduled =
             kind === 'scheduled'
-              ? this.#scheduler.review({ card: card.schedulerState, grade, now })
+              ? this.#scheduler.review({
+                  card: card.schedulerState,
+                  grade,
+                  now,
+                  pace: (await this.#database.settings.get('user'))?.reviewPace,
+                })
               : undefined;
           const updatedCard: CardRecord =
             scheduled === undefined
