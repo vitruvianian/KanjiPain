@@ -17,7 +17,7 @@ import { kanjiIdSchema } from '../../domain/schemas';
 import type { CharacterStatus } from '../../domain/session-types';
 import { deriveCharacterStatus } from '../../domain/status';
 import type { CardRecord, Grade, HintKey, ReviewEvent, UnixMs } from '../../domain/types';
-import { formatDateTime } from '../format';
+import { formatDateTime, formatDueIn } from '../format';
 import { characterStatusLabel } from './status';
 
 const EVENT_KIND_LABELS: Readonly<Record<ReviewEvent['kind'], string>> = Object.freeze({
@@ -39,6 +39,10 @@ const HINT_LABELS: Readonly<Record<HintKey, string>> = Object.freeze({
   'full-answer': 'full answer',
 });
 
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 function dueText(card: CardRecord, now: UnixMs): string {
   if (card.suspended) {
     return 'Paused — due date unchanged';
@@ -46,7 +50,7 @@ function dueText(card: CardRecord, now: UnixMs): string {
   if (card.dueAt <= now) {
     return `Due now (${formatDateTime(card.dueAt)})`;
   }
-  return formatDateTime(card.dueAt);
+  return `${capitalize(formatDueIn(card.dueAt, now))} (${formatDateTime(card.dueAt)})`;
 }
 
 function gradeText(event: ReviewEvent): string {

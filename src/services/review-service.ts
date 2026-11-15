@@ -8,7 +8,14 @@ import {
   reviewEventSchema,
   sessionRecordSchema,
 } from '../domain/schemas';
-import type { CardRecord, CheckerVerdict, ContentIssue, Grade, ReviewEvent } from '../domain/types';
+import type {
+  CardRecord,
+  CheckerVerdict,
+  ContentIssue,
+  Grade,
+  ReviewEvent,
+  UnixMs,
+} from '../domain/types';
 import type { SchedulerAdapter } from '../scheduler/types';
 import type { KanjiPainDatabase } from '../storage/database';
 import {
@@ -51,6 +58,12 @@ export interface CommitGradeResult {
 
 export interface FlagAmbiguousResult extends CommitGradeResult {
   readonly issue: ContentIssue;
+}
+
+/** When a card would next be due after each possible grade, were it graded at `now`. */
+export interface GradePreview {
+  readonly now: UnixMs;
+  readonly dueAt: Readonly<Record<Grade, UnixMs>>;
 }
 
 export interface ReviewServiceDependencies {
@@ -179,6 +192,25 @@ export class ReviewService {
     this.#clock = clock;
     this.#ids = ids;
     this.#draftQueue = draftQueue;
+  }
+
+  /**
+   * What the scheduler would do with each grade right now, without saving anything. Only a
+   * scheduled review moves a card; a rematch leaves its due date alone. Returns null when
+   * the scheduler cannot review the card at this time (a device clock set back).
+   */
+  previewGrades(card: CardRecord): GradePreview | null {
+    const now = this.#clock.now();
+    const dueAfter = (grade: Grade) =>
+      this.#scheduler.review({ card: card.schedulerState, grade, now }).dueAt;
+    try {
+      return {
+        now,
+        dueAt: { got: dueAfter('got'), barely: dueAfter('barely'), missed: dueAfter('missed') },
+      };
+    } catch {
+      return null;
+    }
   }
 
   async commitGrade(input: CommitGradeInput): Promise<CommitGradeResult> {

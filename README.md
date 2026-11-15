@@ -32,6 +32,7 @@ Open the URL printed by Vite. Dependencies are pinned in `package-lock.json`; or
    - **Got it**: correct without extra help → FSRS Good.
    - **Barely**: correct but hesitant → FSRS Hard.
    - **Missed it**: wrong or incomplete → FSRS Again.
+   - Each button shows how long until the character comes back if you choose it (`5d`, `14h`, `<1m`). The character's page and its Collection tile show the next review too.
    - Any requested hint, full-answer reveal, or **I don't know** makes the attempt assisted and forces a miss. Switching input modes or reloading cannot undo assistance. The service enforces this, not just the buttons.
 6. After a miss, repair is unscored. A rematch normally follows three distinct other card completions; short queues explicitly offer less-spaced practice. Each character gets at most two rematches per session.
 

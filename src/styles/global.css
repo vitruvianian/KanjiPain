@@ -1135,3 +1135,18 @@ kbd {
 .account-form .field {
   width: 100%;
 }
+
+/* A grade button with its interval: the label on top, the interval beneath it. */
+.button--grade {
+  flex-direction: column;
+  gap: 2px;
+  min-width: 5.5rem;
+}
+
+.grade-interval {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.2;
+  opacity: 0.8;
+}
