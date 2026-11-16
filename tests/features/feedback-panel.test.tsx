@@ -80,6 +80,34 @@ describe('FeedbackPanel handwriting check', () => {
     expect(onGrade).toHaveBeenCalledExactlyOnceWith('got', 'match');
   });
 
+  it('shows how to write the character after a wrong drawing', async () => {
+    const user = userEvent.setup();
+    renderPanel(phase(vertical));
+
+    expect(
+      await screen.findByRole('img', { name: 'Stroke order animation for 一: 1 stroke' }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Hide the stroke order' }));
+    expect(screen.queryByRole('img', { name: /Stroke order animation/ })).not.toBeInTheDocument();
+  });
+
+  it('keeps the stroke order folded after a correct drawing until asked for', async () => {
+    const user = userEvent.setup();
+    renderPanel(phase(horizontal));
+
+    await screen.findByText('This matches 一.');
+    expect(screen.queryByRole('img', { name: /Stroke order animation/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Show the stroke order' }));
+    expect(screen.getByRole('img', { name: /Stroke order animation/ })).toBeInTheDocument();
+  });
+
+  it('shows how to write the character after a paper attempt', async () => {
+    renderPanel(phase([], 'paper'));
+    expect(
+      await screen.findByRole('img', { name: /Stroke order animation for 一/ }),
+    ).toBeInTheDocument();
+  });
+
   it('requires confirmation before grading a rejected drawing as correct', async () => {
     const user = userEvent.setup();
     const onGrade = renderPanel(phase(vertical));
@@ -107,6 +135,8 @@ describe('FeedbackPanel handwriting check', () => {
     const user = userEvent.setup();
     const onGrade = renderPanel(phase([], 'paper'));
     expect(screen.getByText(/The app cannot judge this attempt/)).toBeInTheDocument();
+    // Once the stroke order guide has loaded, nothing is left checking or judging.
+    await screen.findByRole('img', { name: /Stroke order animation/ });
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Got it' }));
     expect(onGrade).toHaveBeenCalledExactlyOnceWith('got', undefined);
