@@ -5,6 +5,7 @@ import { AnswerGlyph } from '../../components/AnswerGlyph';
 import { Button } from '../../components/Button';
 import { CharacterFacts } from '../../components/CharacterFacts';
 import { Lookalikes, type LookalikeItem } from '../../components/Lookalikes';
+import { StrokeOrder } from '../../components/StrokeOrder';
 import { UnrecognizedWarning } from '../../components/UnrecognizedWarning';
 import { DrawingPad } from '../../components/DrawingPad';
 import type { FeedbackPhase } from '../../domain/session-types';
@@ -126,6 +127,7 @@ export function FeedbackPanel({
   const references = useReferenceStrokes(extraReferenceIds);
   const [showModel, setShowModel] = useState(true);
   const [override, setOverride] = useState<Grade | null>(null);
+  const [strokeOrderChoice, setStrokeOrderChoice] = useState<boolean | null>(null);
 
   const drawn = draft.inputMode === 'drawing' && draft.strokes.length > 0;
   const check = useMemo(
@@ -140,6 +142,10 @@ export function FeedbackPanel({
   // No stroke data for this character: no verdict, overlay or suggested grade.
   const unrecognized = typeof references === 'object' && !references.has(entry.id);
   const suggestion = check === null ? null : suggestedGrade(check);
+  // The way to write the character is open after anything but a correct drawing; a learner
+  // who got it right can still ask for it.
+  const strokeOrderOpen =
+    strokeOrderChoice ?? !(drawn && (references === 'loading' || check?.verdict === 'match'));
   const verdict =
     check === null
       ? null
@@ -231,6 +237,22 @@ export function FeedbackPanel({
             <p className="attempt-note">
               You confirmed a paper attempt. Compare it with the character above.
             </p>
+          )}
+          {unrecognized ? null : (
+            <>
+              <h3>How to write it</h3>
+              {strokeOrderOpen ? (
+                <StrokeOrder key={entry.id} kanjiId={entry.id} literal={entry.literal} />
+              ) : null}
+              <Button
+                aria-expanded={strokeOrderOpen}
+                onClick={() => {
+                  setStrokeOrderChoice(!strokeOrderOpen);
+                }}
+              >
+                {strokeOrderOpen ? 'Hide the stroke order' : 'Show the stroke order'}
+              </Button>
+            </>
           )}
         </div>
         <div>

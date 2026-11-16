@@ -64,6 +64,10 @@ test('a wrong drawing is rejected and needs confirmation to count as correct', a
 
   await expect(page.getByText('The stroke count is off.')).toBeVisible();
   await expect(page.getByText('You drew 1 stroke; 日 has 4.')).toBeVisible();
+  await expect(
+    page.getByRole('img', { name: 'Stroke order animation for 日: 4 strokes' }),
+  ).toBeVisible();
+  await expect(page.getByRole('img', { name: /^Stroke \d of 4$/ })).toHaveCount(4);
   await page.getByRole('button', { name: 'Got it', exact: true }).click();
   await expect(page.getByRole('alertdialog', { name: 'Confirm grade' })).toBeVisible();
   await page.getByRole('button', { name: 'Cancel' }).click();

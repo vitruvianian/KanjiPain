@@ -19,7 +19,7 @@ Open the URL printed by Vite. Dependencies are pinned in `package-lock.json`; or
 ## Practice
 
 1. Enter the Dojo. Start a session or resume the active one.
-2. For a new character, study the introduction, then hide it. The introduction shows how to write the character: an animation draws the strokes in order, each numbered at its starting point, with a step-by-step chart below. The same guide appears on each character's Collection page and when the answer is shown during repair. Recall prompts show up to three English meanings and Japanese reading cues, not the target glyph.
+2. For a new character, study the introduction, then hide it. The introduction shows how to write the character: an animation draws the strokes in order, each numbered at its starting point, with a step-by-step chart below. The same guide appears on each character's Collection page, next to your attempt once the answer is revealed (folded away when the drawing was right), and when the answer is shown during repair. Recall prompts show up to three English meanings and Japanese reading cues, not the target glyph.
 3. Draw at least one stroke, or select **Write on paper** and confirm your paper attempt. Compare only when ready; your submitted drawing is frozen.
 4. For a drawn attempt, the app checks your strokes against the standard form and shows a verdict with a suggested grade:
    - **Matches** → suggests Got it.
